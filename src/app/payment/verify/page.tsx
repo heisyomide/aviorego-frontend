@@ -1,17 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
-export default function PaymentVerifyPage() {
+// 1. Interactive verification sub-component using searchParams
+function PaymentVerifyContent() {
   const router = useRouter();
   const params = useSearchParams();
 
-  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>(
-    'loading',
-  );
-
+  const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
   const [message, setMessage] = useState('Verifying payment...');
 
   useEffect(() => {
@@ -59,46 +57,53 @@ export default function PaymentVerifyPage() {
   };
 
   return (
+    <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg text-center">
+      {status === 'loading' && (
+        <>
+          <Loader2 className="mx-auto h-16 w-16 animate-spin text-blue-600" />
+          <h2 className="mt-5 text-2xl font-bold">Verifying Payment</h2>
+          <p className="mt-2 text-gray-500">{message}</p>
+        </>
+      )}
+
+      {status === 'success' && (
+        <>
+          <CheckCircle2 className="mx-auto h-16 w-16 text-green-600" />
+          <h2 className="mt-5 text-2xl font-bold text-green-700">Payment Successful</h2>
+          <p className="mt-2 text-gray-500">{message}</p>
+        </>
+      )}
+
+      {status === 'failed' && (
+        <>
+          <XCircle className="mx-auto h-16 w-16 text-red-600" />
+          <h2 className="mt-5 text-2xl font-bold text-red-700">Verification Failed</h2>
+          <p className="mt-2 text-gray-500">{message}</p>
+
+          <button
+            onClick={() => router.push('/dashboard/shipments')}
+            className="mt-6 rounded-lg bg-black px-6 py-3 text-white"
+          >
+            Back to Dashboard
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// 2. Main layout export wrapping content in Suspense for static pre-rendering compliance
+export default function PaymentVerifyPage() {
+  return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg text-center">
-
-        {status === 'loading' && (
-          <>
-            <Loader2 className="mx-auto h-16 w-16 animate-spin text-blue-600" />
-            <h2 className="mt-5 text-2xl font-bold">
-              Verifying Payment
-            </h2>
-            <p className="mt-2 text-gray-500">{message}</p>
-          </>
-        )}
-
-        {status === 'success' && (
-          <>
-            <CheckCircle2 className="mx-auto h-16 w-16 text-green-600" />
-            <h2 className="mt-5 text-2xl font-bold text-green-700">
-              Payment Successful
-            </h2>
-            <p className="mt-2 text-gray-500">{message}</p>
-          </>
-        )}
-
-        {status === 'failed' && (
-          <>
-            <XCircle className="mx-auto h-16 w-16 text-red-600" />
-            <h2 className="mt-5 text-2xl font-bold text-red-700">
-              Verification Failed
-            </h2>
-            <p className="mt-2 text-gray-500">{message}</p>
-
-            <button
-              onClick={() => router.push('/dashboard/shipments')}
-              className="mt-6 rounded-lg bg-black px-6 py-3 text-white"
-            >
-              Back to Dashboard
-            </button>
-          </>
-        )}
-      </div>
+      <Suspense fallback={
+        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg text-center">
+          <Loader2 className="mx-auto h-16 w-16 animate-spin text-blue-600" />
+          <h2 className="mt-5 text-2xl font-bold">Loading Page...</h2>
+        </div>
+      }>
+        <PaymentVerifyContent />
+      </Suspense>
     </div>
   );
 }
