@@ -1,0 +1,97 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+
+export default function WithdrawalRequestsPage() {
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  const [requests, setRequests] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  async function fetchPendingWithdrawals() {
+    try {
+      setLoading(true);
+      const res = await fetch(`${BACKEND_URL}/admin/finances/withdrawals`);
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data);
+      }
+    } catch (err) {
+      console.error('Fatal retrieval tracking payload crash:', err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchPendingWithdrawals();
+  }, [BACKEND_URL]);
+
+  async function updatePayoutState(id: string, approve: boolean) {
+    const actionPath = approve ? 'approve' : 'reject';
+    try {
+      const res = await fetch(`${BACKEND_URL}/admin/finances/withdrawals/${id}/${actionPath}`, {
+        method: 'PATCH'
+      });
+
+      if (res.ok) {
+        // Instantly slice updated entries out of memory array state
+        setRequests((prev) => prev.filter(r => r.id !== id));
+      } else {
+        alert('Action could not complete successfully.');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-end">
+        <div>
+          <Link href="/admin/finances" className="text-[10px] text-neutral-400 font-black uppercase hover:text-neutral-950 tracking-wider block mb-1">
+            ← Back to Finances Overview
+          </Link>
+          <h2 className="text-xl font-black uppercase tracking-tight text-neutral-950">Withdrawal Requests</h2>
+          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wide">Approve pending payouts.</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-xs text-center font-mono p-12 text-neutral-400 uppercase tracking-widest animate-pulse">
+          Loading verification ledger rows...
+        </div>
+      ) : requests.length === 0 ? (
+        <div className="text-xs text-center font-mono p-12 text-neutral-400 border border-dashed rounded-3xl border-neutral-200 uppercase tracking-wide bg-white shadow-sm">
+          Clean Queue! No pending withdrawal allocations require attention.
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {requests.map((req) => (
+            <div key={req.id} className="bg-white p-6 rounded-3xl border border-neutral-200 flex justify-between items-center shadow-sm hover:border-neutral-300 transition-all">
+              <div>
+                <p className="font-black text-neutral-950 text-base">{req.user}</p>
+                <p className="text-sm font-black text-red-600 font-mono mt-0.5">{req.amount}</p>
+                <p className="text-[9px] text-neutral-400 font-mono uppercase tracking-wider mt-1">Submitted: {req.date}</p>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => updatePayoutState(req.id, true)}
+                  className="px-4 py-2.5 bg-neutral-950 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-neutral-800 shadow-sm transition-all"
+                >
+                  Approve
+                </button>
+                <button 
+                  onClick={() => updatePayoutState(req.id, false)}
+                  className="px-4 py-2.5 bg-neutral-100 text-neutral-600 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-neutral-200 border border-neutral-200 shadow-sm transition-all"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
