@@ -1,60 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useSmoothMarker } from "../hooks/useSmoothMarker";
-import { Loader2, Bike } from "lucide-react";
 
-// --- INLINED OVERLAY COMPONENT ---
-function FindingRiderOverlay() {
-  return (
-    <div className="flex h-[480px] w-full items-center justify-center bg-gradient-to-br from-neutral-900 to-black text-white border border-neutral-800 rounded-2xl shadow-sm">
-      <div className="max-w-sm text-center px-4">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-white/10">
-          <Loader2 className="h-10 w-10 animate-spin" />
-        </div>
-
-        <h2 className="text-2xl font-bold">
-          Finding Your Rider
-        </h2>
-
-        <p className="mt-3 text-sm text-neutral-300 leading-6">
-          Please wait while we assign the nearest delivery
-          partner to your shipment.
-        </p>
-
-        <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="flex items-center gap-3">
-            <Bike className="text-green-400" />
-
-            <div className="text-left">
-              <p className="font-semibold">
-                Searching Nearby Riders
-              </p>
-
-              <p className="text-xs text-neutral-400">
-                This usually takes less than 2 minutes.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// --- LEAFLET MAP DECORATORS ---
+// Custom Leaflet design decorators
 const storeIcon = L.divIcon({
-  html: `<div style="background-color:#000; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px rgba(0,0,0,0.3); border:2px solid #fff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`,
+  html: `<div style="background-color:#2563eb; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px rgba(0,0,0,0.3); border:2px solid #fff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>`,
   className: "",
   iconSize: [32, 32],
   iconAnchor: [16, 16],
 });
 
 const houseIcon = L.divIcon({
-  html: `<div style="background-color:#000; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px rgba(0,0,0,0.3); border:2px solid #fff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`,
+  html: `<div style="background-color:#10b981; color:#fff; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 6px rgba(0,0,0,0.3); border:2px solid #fff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>`,
   className: "",
   iconSize: [32, 32],
   iconAnchor: [16, 16],
@@ -70,8 +31,9 @@ const vehicleIcon = L.divIcon({
 function MapViewManager({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
-    if (points.length > 0) {
-      const bounds = L.latLngBounds(points);
+    const validPoints = points.filter(([lat, lng]) => lat !== 0 && lng !== 0 && !isNaN(lat) && !isNaN(lng));
+    if (validPoints.length > 0) {
+      const bounds = L.latLngBounds(validPoints);
       map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16, animate: true });
     }
   }, [points, map]);
@@ -98,85 +60,77 @@ export default function CustomerTrackingMap({
   status,
 }: MapProps) {
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
-  const [smoothLat, smoothLng] = useSmoothMarker(riderLat, riderLng, 1200);
+  
+  // 🌟 Interpolate position changes using the hook to make the marker slide smoothly instead of jumping
+  const [smoothLat, smoothLng] = useSmoothMarker(riderLat, riderLng, 800);
 
   const statusLower = status?.toLowerCase() || "";
   const isHeadingToPickup = ["accepted", "picking_up", "assigned", "arrived_at_pickup"].includes(statusLower);
 
-  // 1. CONDITIONAL GUARD: Intercept pending status updates and render the searching card view
-  if (statusLower === "pending") {
-    return <FindingRiderOverlay />;
-  }
-
-  // 2. STAGE RESET HUD: If status changes to delivered, present confirmation notice
-  if (statusLower === "delivered") {
-    return (
-      <div className="w-full h-[480px] bg-neutral-50 flex flex-col items-center justify-center text-neutral-500 border border-neutral-200 rounded-2xl shadow-sm">
-        <div className="bg-emerald-50 p-4 rounded-full mb-3 text-emerald-600 border border-emerald-100">
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-            <polyline points="22 4 12 14.01 9 11.01"/>
-          </svg>
-        </div>
-        <span className="font-black text-neutral-800 tracking-tight text-lg">Package Delivered Successfully</span>
-        <p className="text-xs text-neutral-400 mt-1">Thank you for using AviorèGo logistics systems.</p>
-      </div>
-    );
-  }
-
-  // 3. Telemetry path tracking route engine
+  // Telemetry street path engine
   useEffect(() => {
+    // 🌟 DECOUPLE: Fetch routes based on raw websocket input, but throttle API queries by routing updates gracefully
     const endLat = isHeadingToPickup ? pickupLat : destinationLat;
     const endLng = isHeadingToPickup ? pickupLng : destinationLng;
 
+    if (!riderLat || !riderLng || isNaN(riderLat) || isNaN(riderLng)) return;
+
+    let isMounted = true;
     async function fetchStreetRoute() {
       try {
         const url = `https://router.project-osrm.org/route/v1/driving/${riderLng},${riderLat};${endLng},${endLat}?overview=full&geometries=geojson`;
         const res = await fetch(url);
         const data = await res.json();
         
-        if (data.routes && data.routes.length > 0) {
+        if (isMounted && data.routes && data.routes.length > 0) {
           const coords = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
           setRouteCoordinates(coords);
         }
       } catch (err) {
-        console.error("OSRM call routing failed:", err);
+        console.error("OSRM street routing request failed:", err);
       }
     }
 
     fetchStreetRoute();
-  }, [riderLat, riderLng, pickupLat, pickupLng, destinationLat, destinationLng, isHeadingToPickup, statusLower]);
+    return () => { isMounted = false; };
+  }, [riderLat, riderLng, pickupLat, pickupLng, destinationLat, destinationLng, isHeadingToPickup]);
+
+  // Fallbacks to keep map centered if interpolation hasn't computed initial frames
+  const displayLat = smoothLat || riderLat || pickupLat;
+  const displayLng = smoothLng || riderLng || pickupLng;
 
   return (
     <div className="relative w-full h-[480px] bg-[#e5e9f0] border border-neutral-200 rounded-2xl overflow-hidden shadow-sm">
       <MapContainer
-        center={[smoothLat, smoothLng]}
+        center={[displayLat, displayLng]}
         zoom={14}
         zoomControl={false}
         className="w-full h-full"
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
 
         <MapViewManager 
-          points={[[smoothLat, smoothLng], [pickupLat, pickupLng], [destinationLat, destinationLng]]} 
+          points={[[displayLat, displayLng], [pickupLat, pickupLng], [destinationLat, destinationLng]]} 
         />
 
         {routeCoordinates.length > 0 && (
           <Polyline 
             positions={routeCoordinates} 
-            color="#171717" 
-            weight={4} 
-            opacity={0.8}
-            dashArray="2, 8"
+            color={isHeadingToPickup ? "#2563eb" : "#10b981"} 
+            weight={5} 
+            opacity={0.85}
+            lineJoin="round"
           />
         )}
 
         {isHeadingToPickup && <Marker position={[pickupLat, pickupLng]} icon={storeIcon} />}
         <Marker position={[destinationLat, destinationLng]} icon={houseIcon} />
-        <Marker position={[smoothLat, smoothLng]} icon={vehicleIcon} />
+        
+        {/* 🌟 THIS IS THE REAL-TIME COURIER VEHICLE MARKER */}
+        <Marker position={[displayLat, displayLng]} icon={vehicleIcon} />
       </MapContainer>
     </div>
   );

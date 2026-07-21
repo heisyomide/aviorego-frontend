@@ -44,7 +44,7 @@ function LoginFormContent() {
       
       // 2. Intelligent Routing based on Role & Status
       if (user.role === 'CUSTOMER') {
-        router.push('/customer/dashboard');
+        router.push('/dashboard');
       } else if (user.role === 'RIDER') {
         if (user.status === 'PENDING_VERIFICATION' || user.status === 'PENDING') {
           router.push('/rider/onboarding'); 
