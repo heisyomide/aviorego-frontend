@@ -20,6 +20,16 @@ const initialState: ShipmentFormData = {
     placeId: "",
   },
 
+  sender: {
+    senderName: "",
+    senderPhone: "",
+  },
+
+  receiver: {
+    receiverName: "",
+    receiverPhone: "",
+  },
+
   packageCategory: "SMALL_PARCEL",
 
   weightRange: "UNDER_1KG",
@@ -27,11 +37,6 @@ const initialState: ShipmentFormData = {
   deliveryType: "PARCEL",
 
   deliveryMethod: "hand",
-
-  receiver: {
-    receiverName: "",
-    receiverPhone: "",
-  },
 
   deliveryNote: "",
 
@@ -93,6 +98,15 @@ export function useShipment() {
     }));
   }
 
+  function updateSender(
+    sender: ShipmentFormData["sender"]
+  ) {
+    setShipment((prev) => ({
+      ...prev,
+      sender,
+    }));
+  }
+
   function updateReceiver(
     receiver: ShipmentFormData["receiver"]
   ) {
@@ -130,6 +144,8 @@ export function useShipment() {
     updatePickup,
 
     updateDestination,
+
+    updateSender,
 
     updateReceiver,
 
