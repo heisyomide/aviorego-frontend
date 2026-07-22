@@ -80,12 +80,23 @@ const createShipment = async () => {
     throw new Error("User is not authenticated.");
   }
 
+  // Determine sender details from formData or fallback to authenticated user context
+  const senderName =
+    formData.sender?.senderName ||
+    (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.firstName || "");
+
+  const senderPhone = formData.sender?.senderPhone || user?.phone || user?.phoneNumber || "";
+
   const payload = {
+    // Sender Information (Required by Backend DTO)
+    senderName,
+    senderPhone,
+
     deliveryType: formData.deliveryType,
-    deliverySpeed: formData.deliverySpeed, // Changed from Type reference to value
-    packageCategory: formData.packageCategory, // Changed from Type reference to value
+    deliverySpeed: formData.deliverySpeed,
+    packageCategory: formData.packageCategory,
     weightRange: formData.weightRange,
-    
+
     pickupAddress: formData.pickup.address,
     pickupLat: formData.pickup.latitude,
     pickupLng: formData.pickup.longitude,
@@ -96,14 +107,14 @@ const createShipment = async () => {
     destinationLng: formData.destination.longitude,
     destinationPlaceId: formData.destination.placeId,
 
-    // Matches your FlatShipmentPayload interface naming conventions
+    // Receiver Information
     receiverName: formData.receiver.receiverName,
     receiverPhone: formData.receiver.receiverPhone,
 
     verificationPin: pin,
     deliveryMethod: formData.deliveryMethod,
     waterproof: formData.waterproof,
-    isExpress: formData.deliverySpeed === "EXPRESS", // Evaluated against deliverySpeed
+    isExpress: formData.deliverySpeed === "EXPRESS",
   };
 
   const response = await fetch(
@@ -128,9 +139,8 @@ const createShipment = async () => {
     );
   }
 
-  return result.data; // Matches your ShipmentResponse interface structure
+  return result.data;
 };
-
 const initializeFlutterwavePayment = async () => {
 
     if (!pricing) return;

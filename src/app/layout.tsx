@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import "./globals.css";
 import ReactQueryProvider from "../providers/ReactQueryProvider";
 import { AuthProvider } from "../context/AuthContext";
+import SplashGate from "../components/SplashGate";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -119,7 +120,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[#f8fafc] text-neutral-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
         <ReactQueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <SplashGate>{children}</SplashGate>
+          </AuthProvider>
         </ReactQueryProvider>
       </body>
     </html>

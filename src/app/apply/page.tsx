@@ -12,45 +12,30 @@ import {
   ArrowLeft,
   DollarSign,
   Clock,
-  Navigation,
-  FileText,
-  UserCheck,
   Building2,
   Sparkles,
-  HelpCircle,
   Menu,
   X,
-  Lock,
   Award,
-  Zap,
-  ChevronRight,
-  MapPin,
   TrendingUp,
 } from 'lucide-react';
+
+// Import Footer from home components
+import Footer from '../../components/home/Footer';
 
 const TOTAL_ORIENTATION_STEPS = 4;
 
 export default function RiderApplyInfoPage() {
-  const router = Router();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-
-  // Router fallback if using next/navigation
-  function Router() {
-    try {
-      return useRouter();
-    } catch {
-      return { push: (path: string) => { window.location.href = path; } };
-    }
-  }
 
   const nextStep = () => {
     if (currentStep < TOTAL_ORIENTATION_STEPS) {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      // Finished all orientation steps -> Redirect to Registration Form
-      router.push('/become-rider'); // Replace with your exact registration route
+      router.push('/become-rider');
     }
   };
 
@@ -63,10 +48,7 @@ export default function RiderApplyInfoPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased selection:bg-emerald-100 selection:text-emerald-900">
-      
-      {/* ------------------------------------------------------------- */}
-      {/* 1. HEADER                                                     */}
-      {/* ------------------------------------------------------------- */}
+      {/* 1. HEADER */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
@@ -75,7 +57,10 @@ export default function RiderApplyInfoPage() {
             </div>
             <div className="flex flex-col">
               <span className="font-black text-2xl tracking-tight text-slate-900 flex items-center gap-1.5">
-                Aviorè <span className="inline-flex items-center bg-emerald-700 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-normal align-middle shadow-xs">Go</span>
+                Aviorè{' '}
+                <span className="inline-flex items-center bg-emerald-700 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-normal align-middle shadow-xs">
+                  Go
+                </span>
               </span>
               <span className="text-[9px] uppercase tracking-widest font-bold text-slate-400 -mt-0.5">
                 Rider Partner Portal
@@ -85,9 +70,15 @@ export default function RiderApplyInfoPage() {
 
           {/* Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-600">
-            <Link href="/" className="hover:text-slate-900 transition-colors">Home</Link>
-            <Link href="/how-it-works" className="hover:text-slate-900 transition-colors">How it Works</Link>
-            <Link href="/coverage" className="hover:text-slate-900 transition-colors">Coverage</Link>
+            <Link href="/" className="hover:text-slate-900 transition-colors">
+              Home
+            </Link>
+            <Link href="/how-it-works" className="hover:text-slate-900 transition-colors">
+              How it Works
+            </Link>
+            <Link href="/coverage" className="hover:text-slate-900 transition-colors">
+              Coverage
+            </Link>
             <span className="text-emerald-700 font-bold flex items-center gap-1">
               <Bike size={14} /> Rider Info & Orientation
             </span>
@@ -104,6 +95,7 @@ export default function RiderApplyInfoPage() {
           </div>
 
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 focus:outline-none"
           >
@@ -114,19 +106,26 @@ export default function RiderApplyInfoPage() {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 space-y-3">
-            <Link href="/" className="block py-2 text-sm font-semibold text-slate-700">Home</Link>
-            <Link href="/how-it-works" className="block py-2 text-sm font-semibold text-slate-700">How It Works</Link>
-            <Link href="/coverage" className="block py-2 text-sm font-semibold text-slate-700">Coverage Network</Link>
-            <Link href="/become-rider" className="block py-2.5 text-center text-sm font-bold text-white bg-emerald-700 rounded-xl">
+            <Link href="/" className="block py-2 text-sm font-semibold text-slate-700">
+              Home
+            </Link>
+            <Link href="/how-it-works" className="block py-2 text-sm font-semibold text-slate-700">
+              How It Works
+            </Link>
+            <Link href="/coverage" className="block py-2 text-sm font-semibold text-slate-700">
+              Coverage Network
+            </Link>
+            <Link
+              href="/become-rider"
+              className="block py-2.5 text-center text-sm font-bold text-white bg-emerald-700 rounded-xl"
+            >
               Register Now
             </Link>
           </div>
         )}
       </header>
 
-      {/* ------------------------------------------------------------- */}
-      {/* 2. HERO / ORIENTATION BANNER                                  */}
-      {/* ------------------------------------------------------------- */}
+      {/* 2. HERO / ORIENTATION BANNER */}
       <section className="bg-slate-950 text-white border-b border-slate-800 py-10 lg:py-14">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-3">
           <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1 rounded-full text-emerald-400 text-xs font-bold">
@@ -134,23 +133,24 @@ export default function RiderApplyInfoPage() {
             <span>Rider Partner Orientation Guide</span>
           </div>
           <h1 className="text-3xl sm:text-5xl font-black tracking-tight">
-            Everything You Need To Know <br className="hidden sm:inline" /> Before <span className="text-emerald-400">Joining Our Fleet</span>
+            Everything You Need To Know <br className="hidden sm:inline" /> Before{' '}
+            <span className="text-emerald-400">Joining Our Fleet</span>
           </h1>
           <p className="text-slate-400 text-xs sm:text-sm font-medium max-w-xl mx-auto">
-            Go through our 4-step orientation to learn about earnings, flexible shifts, required documents, and rider benefits across Osun and Oyo State.
+            Go through our 4-step orientation to learn about earnings, flexible shifts, required
+            documents, and rider benefits across Osun and Oyo State.
           </p>
         </div>
       </section>
 
-      {/* ------------------------------------------------------------- */}
-      {/* 3. STEPPER PROGRESS BAR                                       */}
-      {/* ------------------------------------------------------------- */}
+      {/* 3. STEPPER PROGRESS BAR */}
       <div className="sticky top-20 z-40 bg-white border-b border-slate-200 shadow-xs">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
-          
           <div className="flex items-center justify-between mb-2 text-[11px] font-extrabold uppercase tracking-wider text-emerald-700">
             <span>Orientation Progress</span>
-            <span>Step {currentStep} of {TOTAL_ORIENTATION_STEPS}</span>
+            <span>
+              Step {currentStep} of {TOTAL_ORIENTATION_STEPS}
+            </span>
           </div>
 
           {/* Stepper Dots & Progress Line */}
@@ -169,6 +169,7 @@ export default function RiderApplyInfoPage() {
             ].map((s) => (
               <div key={s.step} className="flex flex-col items-center gap-1 bg-white px-2">
                 <button
+                  type="button"
                   onClick={() => setCurrentStep(s.step)}
                   className={`w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-xs transition-all ${
                     currentStep === s.step
@@ -180,7 +181,11 @@ export default function RiderApplyInfoPage() {
                 >
                   {s.step < currentStep ? <CheckCircle2 size={18} /> : s.step}
                 </button>
-                <span className={`text-[11px] font-bold ${currentStep === s.step ? 'text-slate-900' : 'text-slate-400'}`}>
+                <span
+                  className={`text-[11px] font-bold ${
+                    currentStep === s.step ? 'text-slate-900' : 'text-slate-400'
+                  }`}
+                >
                   {s.label}
                 </span>
               </div>
@@ -189,12 +194,9 @@ export default function RiderApplyInfoPage() {
         </div>
       </div>
 
-      {/* ------------------------------------------------------------- */}
-      {/* 4. ORIENTATION CONTENT STEPPER                                */}
-      {/* ------------------------------------------------------------- */}
+      {/* 4. ORIENTATION CONTENT STEPPER */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs space-y-8">
-          
           {/* STEP 1: OVERVIEW & WHY JOIN */}
           {currentStep === 1 && (
             <div className="space-y-8">
@@ -206,7 +208,8 @@ export default function RiderApplyInfoPage() {
                   Why deliver with Aviorè Go?
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500 font-medium">
-                  We empower bike riders, tricycle drivers, and van operators with consistent daily orders across Osun and Oyo State.
+                  We empower bike riders, tricycle drivers, and van operators with consistent daily
+                  orders across Osun and Oyo State.
                 </p>
               </div>
 
@@ -245,8 +248,11 @@ export default function RiderApplyInfoPage() {
               <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-start gap-3">
                 <Award size={22} className="text-emerald-700 shrink-0 mt-0.5" />
                 <div className="text-xs text-emerald-950 font-medium leading-relaxed space-y-1">
-                  <span className="font-bold block text-sm text-emerald-900">Rider Performance Incentives</span>
-                  Top monthly dispatch riders in Osogbo, Ibadan, Ile-Ife, and Ede receive weekly fuel allowances, free helmet gear, and maintenance vouchers.
+                  <span className="font-bold block text-sm text-emerald-900">
+                    Rider Performance Incentives
+                  </span>
+                  Top monthly dispatch riders in Osogbo, Ibadan, Ile-Ife, and Ede receive weekly fuel
+                  allowances, free helmet gear, and maintenance vouchers.
                 </div>
               </div>
             </div>
@@ -324,34 +330,52 @@ export default function RiderApplyInfoPage() {
 
               <div className="space-y-3">
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">1</div>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">
+                    1
+                  </div>
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">Valid Identity Document</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">NIN, Voter's Card, National ID, or International Passport.</p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      NIN, Voter's Card, National ID, or International Passport.
+                    </p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">2</div>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">
+                    2
+                  </div>
                   <div>
-                    <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">Driver's License & Roadworthy Vehicle</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Valid rider driver's license alongside proof of vehicle registration paper.</p>
+                    <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">
+                      Driver's License & Roadworthy Vehicle
+                    </h4>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Valid rider driver's license alongside proof of vehicle registration paper.
+                    </p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">3</div>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">
+                    3
+                  </div>
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">Smartphone with GPS</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Android or iOS smartphone with active mobile data for turn-by-turn navigation.</p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Android or iOS smartphone with active mobile data for turn-by-turn navigation.
+                    </p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">4</div>
+                  <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-black text-xs flex items-center justify-center shrink-0">
+                    4
+                  </div>
                   <div>
                     <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm">One Guarantor</h4>
-                    <p className="text-[11px] text-slate-500 font-medium">Contact information of a verifiable guarantor (family member, employer, or community lead).</p>
+                    <p className="text-[11px] text-slate-500 font-medium">
+                      Contact information of a verifiable guarantor (family member, employer, or community lead).
+                    </p>
                   </div>
                 </div>
               </div>
@@ -377,25 +401,33 @@ export default function RiderApplyInfoPage() {
                 <div className="p-4 rounded-2xl border border-slate-200 space-y-1.5">
                   <div className="text-xs font-black text-emerald-700 uppercase">01. Go Online</div>
                   <h4 className="font-bold text-slate-900 text-xs">Accept Nearby Orders</h4>
-                  <p className="text-[11px] text-slate-500 font-medium">App alerts you to pickup requests near your current location in Osun or Oyo.</p>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    App alerts you to pickup requests near your current location in Osun or Oyo.
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-2xl border border-slate-200 space-y-1.5">
                   <div className="text-xs font-black text-emerald-700 uppercase">02. Collect Package</div>
                   <h4 className="font-bold text-slate-900 text-xs">Sender Verification</h4>
-                  <p className="text-[11px] text-slate-500 font-medium">Pick up item from sender or store merchant and confirm package condition.</p>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Pick up item from sender or store merchant and confirm package condition.
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-2xl border border-slate-200 space-y-1.5">
                   <div className="text-xs font-black text-emerald-700 uppercase">03. GPS Navigation</div>
                   <h4 className="font-bold text-slate-900 text-xs">Follow Optimal Route</h4>
-                  <p className="text-[11px] text-slate-500 font-medium">In-app map guides you on the fastest route directly to the recipient.</p>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    In-app map guides you on the fastest route directly to the recipient.
+                  </p>
                 </div>
 
                 <div className="p-4 rounded-2xl border border-slate-200 space-y-1.5">
                   <div className="text-xs font-black text-emerald-700 uppercase">04. OTP Handshake</div>
                   <h4 className="font-bold text-slate-900 text-xs">Instant Settlement</h4>
-                  <p className="text-[11px] text-slate-500 font-medium">Input recipient’s OTP code to complete delivery and credit your wallet instantly.</p>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Input recipient’s OTP code to complete delivery and credit your wallet instantly.
+                  </p>
                 </div>
               </div>
 
@@ -407,7 +439,7 @@ export default function RiderApplyInfoPage() {
                 <button
                   type="button"
                   onClick={() => router.push('/become-rider')}
-                  className="inline-flex items-center gap-2 px-8 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg active:scale-95"
+                  className="inline-flex items-center gap-2 px-8 py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
                 >
                   <span>Proceed To Registration Form</span>
                   <ArrowRight size={16} />
@@ -416,15 +448,13 @@ export default function RiderApplyInfoPage() {
             </div>
           )}
 
-          {/* ------------------------------------------------------------- */}
-          {/* STEPPER NAVIGATION CONTROL BUTTONS                           */}
-          {/* ------------------------------------------------------------- */}
+          {/* STEPPER NAVIGATION CONTROL BUTTONS */}
           <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
             <button
               type="button"
               onClick={prevStep}
               disabled={currentStep === 1}
-              className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
               <ArrowLeft size={16} /> Previous Step
             </button>
@@ -432,7 +462,7 @@ export default function RiderApplyInfoPage() {
             <button
               type="button"
               onClick={nextStep}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-950 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs active:scale-95"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-slate-950 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl transition-all shadow-xs active:scale-95 cursor-pointer"
             >
               <span>
                 {currentStep === TOTAL_ORIENTATION_STEPS
@@ -442,30 +472,11 @@ export default function RiderApplyInfoPage() {
               <ArrowRight size={16} />
             </button>
           </div>
-
         </div>
       </main>
 
-      {/* ------------------------------------------------------------- */}
-      {/* 5. FOOTER                                                     */}
-      {/* ------------------------------------------------------------- */}
-      <footer className="bg-white border-t border-slate-200/80 px-6 lg:px-16 py-12 mt-12">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-xs font-semibold text-slate-400 gap-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-emerald-700 text-white p-1 rounded-lg">
-              <Package size={16} />
-            </div>
-            <span className="font-extrabold text-slate-900">Aviorè Go Logistics</span>
-            <span>&copy; 2026. All rights reserved.</span>
-          </div>
-          <div className="flex gap-6">
-            <Link href="/" className="hover:text-slate-900 transition-colors">Home</Link>
-            <Link href="/how-it-works" className="hover:text-slate-900 transition-colors">How it Works</Link>
-            <Link href="/become-rider" className="hover:text-slate-900 transition-colors font-bold text-emerald-700">Rider Registration</Link>
-          </div>
-        </div>
-      </footer>
-
+      {/* 5. FOOTER */}
+      <Footer />
     </div>
   );
 }

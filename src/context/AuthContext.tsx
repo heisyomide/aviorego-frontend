@@ -12,6 +12,8 @@ export interface User {
   id: string;
   email: string;
   firstName: string;
+  phone?: string;        
+  phoneNumber?: string;  
   lastName: string;
   role:
     | 'CUSTOMER'

@@ -7,16 +7,11 @@ export type DeliveryMethod =
   | "hand"
   | "smart";
 
-  export type DeliveryType =
-
+export type DeliveryType =
   | "PARCEL"
-
   | "FOOD"
-
   | "GROCERY"
-
   | "PHARMACY"
-
   | "DOCUMENT";
 
 export type WeightRange =
@@ -37,9 +32,15 @@ export type PackageCategory =
 
 export interface AddressData {
   address: string;
+  landmark?: string;          // Added: Vital for Nigerian logistics navigation
   latitude: number;
   longitude: number;
-  placeId: string;
+  placeId?: string;           // Updated: Optional for dropped pins / OSM searches
+}
+
+export interface SenderInformation {
+  senderName: string;         // Added: Required so rider can contact pickup point
+  senderPhone: string;
 }
 
 export interface ReceiverInformation {
@@ -49,11 +50,15 @@ export interface ReceiverInformation {
 
 // Main Form Data - Using Nested Structure (Recommended)
 export interface ShipmentFormData {
-  // Locations (Nested - cleaner for forms)
+  // Locations
   pickup: AddressData;
   destination: AddressData;
-     deliverySpeed: DeliverySpeed,
-    
+  deliverySpeed: DeliverySpeed;
+
+  // Contact Info
+  sender: SenderInformation;  // Added: Sender details block
+  receiver: ReceiverInformation;
+
   // Package Details
   packageCategory: PackageCategory;
   weightRange: WeightRange;
@@ -61,10 +66,8 @@ export interface ShipmentFormData {
   // Delivery Options
   deliveryType: DeliveryType;
   deliveryMethod: DeliveryMethod;
-
-  // Receiver
-  receiver: ReceiverInformation;
-
+  phone?: string;        
+  phoneNumber?: string;  
   // Additional
   deliveryNote: string;
   verificationPin: string;
@@ -74,20 +77,26 @@ export interface ShipmentFormData {
   waterproof: boolean;
   keepUpright: boolean;
   handleWithCare: boolean;
+  isExpress?: boolean;
 }
 
-// Optional: Flat version for backend payload
-export interface FlatShipmentPayload extends Omit<ShipmentFormData, 'pickup' | 'destination' | 'receiver'> {
+// Flat version for backend payload (DTO compatible)
+export interface FlatShipmentPayload extends Omit<ShipmentFormData, 'pickup' | 'destination' | 'receiver' | 'sender'> {
+  // Pickup Metadata
   pickupAddress: string;
+  pickupLandmark?: string;
   pickupLat: number;
   pickupLng: number;
-  pickupPlaceId: string;
+  pickupPlaceId?: string;
+  senderName: string;
+  senderPhone: string;
 
+  // Destination Metadata
   destinationAddress: string;
+  destinationLandmark?: string;
   destinationLat: number;
   destinationLng: number;
-  destinationPlaceId: string;
-
+  destinationPlaceId?: string;
   receiverName: string;
   receiverPhone: string;
 }
@@ -127,8 +136,6 @@ export interface ShipmentResponse {
   };
 }
 
-// app/shipment/types.ts
-
 export type ShipmentStatus =
   | "PENDING"
   | "ACCEPTED"
@@ -156,39 +163,38 @@ export interface TimelineEvent {
 
 export interface Shipment {
   id: string;
-
   trackingCode: string;
-
   status: ShipmentStatus;
 
+  // Pickup Metadata
   pickupAddress: string;
+  pickupLandmark?: string | null;
   pickupLat: number;
   pickupLng: number;
-  pickupPlaceId: string;
+  pickupPlaceId?: string | null;
+  senderName?: string | null;
+  senderPhone?: string | null;
 
+  // Destination Metadata
   destinationAddress: string;
+  destinationLandmark?: string | null;
   destinationLat: number;
   destinationLng: number;
-  destinationPlaceId: string;
-
+  destinationPlaceId?: string | null;
   recipient: string;
   recipientPhone: string;
 
   packageCategory: string;
   weightRange: string;
-
   totalPrice: number;
-
   distanceKm: number;
-
   estimatedMinutes: number;
-
   createdAt: string;
 
   rider?: Rider | null;
-
   timelineEvents: TimelineEvent[];
 }
+
 export interface ShipmentStats {
   active: number;
   inTransit: number;

@@ -4,25 +4,19 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   Package,
-  MapPin,
-  Clock,
   ShieldCheck,
-  Search,
-  CheckCircle2,
-  ArrowRight,
   Menu,
   X,
-  ChevronRight,
   Zap,
   Navigation,
   Smartphone,
   Lock,
-  UserCheck,
   HelpCircle,
-  Truck,
-  Building2,
   Bike,
 } from 'lucide-react';
+
+// Import Footer from home components
+import Footer from '../../components/home/Footer';
 
 export default function HowItWorksPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -432,7 +426,7 @@ export default function HowItWorksPage() {
         </section>
 
         {/* ------------------------------------------------------------- */}
-        {/* 6. CALL TO ACTION BANNER                                      */}
+        {/* 6. CALL TO ACTION BANNER                                       */}
         {/* ------------------------------------------------------------- */}
         <section className="rounded-[2.5rem] bg-emerald-950 text-white p-8 sm:p-12 border border-emerald-900 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="space-y-2 text-center sm:text-left">
@@ -452,23 +446,7 @@ export default function HowItWorksPage() {
       {/* ------------------------------------------------------------- */}
       {/* 7. FOOTER                                                     */}
       {/* ------------------------------------------------------------- */}
-      <footer className="bg-white border-t border-slate-200/80 px-6 lg:px-16 py-12">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between text-xs font-semibold text-slate-400 gap-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-emerald-700 text-white p-1 rounded-lg">
-              <Package size={16} />
-            </div>
-            <span className="font-extrabold text-slate-900">Aviorè Go</span>
-            <span>&copy; 2026. All rights reserved.</span>
-          </div>
-          <div className="flex gap-6">
-            <Link href="/" className="hover:text-slate-900 transition-colors">Home</Link>
-            <Link href="/coverage" className="hover:text-slate-900 transition-colors">Coverage Network</Link>
-            <Link href="/privacy" className="hover:text-slate-900 transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-slate-900 transition-colors">Terms</Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
     </div>
   );
