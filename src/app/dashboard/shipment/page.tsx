@@ -13,26 +13,32 @@ export default function ShipmentDashboardPage() {
     refresh,
   } = useShipments();
 
-return (
-  <div className="space-y-8">
+  // Map shipments to match the RecentShipment shape expected by ShipmentOverview
+  const formattedShipments = shipments.map((s: any) => ({
+    ...s,
+    // Adjust field names below to match your actual Shipment data fields
+    destination: s.destination || s.dropoffAddress || s.recipientAddress || "N/A",
+    date: s.date || s.createdAt || new Date(s.timestamp || Date.now()).toLocaleDateString(),
+  }));
 
-    <ShipmentHeader
-      onRefresh={refresh}
-      onTrack={(trackingCode) => {
-        console.log(trackingCode);
-      }}
-    />
+  return (
+    <div className="space-y-8">
+      <ShipmentHeader
+        onRefresh={refresh}
+        onTrack={(trackingCode) => {
+          console.log(trackingCode);
+        }}
+      />
 
-    <ShipmentStats
-      stats={stats}
-      loading={loading}
-    />
+      <ShipmentStats
+        stats={stats}
+        loading={loading}
+      />
 
-    <ShipmentOverview
-      shipments={shipments}
-      loading={loading}
-    />
-
-  </div>
-);
+      <ShipmentOverview
+        shipments={formattedShipments}
+        loading={loading}
+      />
+    </div>
+  );
 }
