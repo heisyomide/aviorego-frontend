@@ -13,14 +13,13 @@ import ShipmentTimeline from "../components/ShipmentTimeline";
 
 import type { LiveLocation, Shipment } from "../types";
 
-// Explicit local intersection match to guarantee page state remains uniform
 interface TrackingShipment extends Omit<Shipment, "rider"> {
   rider?: {
     id: string;
     name?: string;
     phone?: string;
-    lastLat?: string | null;
-    lastLng?: string | null;
+    lastLat?: string | number | null;
+    lastLng?: string | number | null;
   } | null;
 }
 
@@ -30,55 +29,69 @@ export default function ShipmentPage() {
   const shipmentId = params.id as string;
 
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [shipment, setShipment] = useState<TrackingShipment | null>(null);
   const [liveLocation, setLiveLocation] = useState<LiveLocation | null>(null);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !shipmentId) return;
+
+    let isMounted = true;
 
     async function loadShipmentDetails() {
       try {
         setLoading(true);
+        setErrorMessage(null);
+
         const data = await ShipmentService.getShipment(shipmentId, token!);
+
+        if (!isMounted) return;
+
         setShipment(data as unknown as TrackingShipment);
 
-        // FIXED: Type-cast data as any right here to completely bypass the rigid global Rider interface constraint
         const rawData = data as any;
-
         setLiveLocation({
-          latitude: rawData.rider?.lastLat ? Number(rawData.rider.lastLat) : Number(rawData.pickupLat),
-          longitude: rawData.rider?.lastLng ? Number(rawData.rider.lastLng) : Number(rawData.pickupLng),
+          latitude: rawData.rider?.lastLat ? Number(rawData.rider.lastLat) : Number(rawData.pickupLat || 0),
+          longitude: rawData.rider?.lastLng ? Number(rawData.rider.lastLng) : Number(rawData.pickupLng || 0),
         });
-      } catch (error) {
+      } catch (error: any) {
+        if (!isMounted) return;
         console.error("Failed loading target shipment matrix layout:", error);
+        setErrorMessage(error.message || "Failed to load shipment details.");
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
 
     loadShipmentDetails();
+
+    return () => {
+      isMounted = false;
+    };
   }, [shipmentId, token]);
 
   // Handle live WebSocket pipeline events
   useEffect(() => {
-    if (!shipment) return;
+    if (!shipment?.id) return;
 
     socket.connect();
     socket.emit("customer:joinShipment", shipment.id);
 
-    socket.on("tracking:update", (payload: LiveLocation) => {
+    const handleTrackingUpdate = (payload: LiveLocation) => {
       setLiveLocation({
         latitude: Number(payload.latitude),
         longitude: Number(payload.longitude),
       });
-    });
+    };
+
+    socket.on("tracking:update", handleTrackingUpdate);
 
     return () => {
       socket.emit("customer:leaveShipment", shipment.id);
-      socket.off("tracking:update");
+      socket.off("tracking:update", handleTrackingUpdate);
       socket.disconnect();
     };
-  }, [shipment]);
+  }, [shipment?.id]);
 
   if (loading) {
     return (
@@ -88,11 +101,15 @@ export default function ShipmentPage() {
     );
   }
 
-  if (!shipment) {
+  if (errorMessage || !shipment) {
     return (
       <div className="py-24 text-center">
-        <h2 className="text-xl font-bold text-neutral-800">Shipment delivery record missing</h2>
-        <p className="mt-1 text-sm text-neutral-500">Please verify token authenticity metrics.</p>
+        <h2 className="text-xl font-bold text-neutral-800">
+          {errorMessage || "Shipment record missing"}
+        </h2>
+        <p className="mt-1 text-sm text-neutral-500">
+          Please verify the shipment URL or check your token authentication status.
+        </p>
       </div>
     );
   }

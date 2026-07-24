@@ -68,7 +68,7 @@ export default function PaymentsAndRiderSection() {
 
             <div className="relative z-10 pt-4">
               <Link
-                href="/rider/apply"
+                href="/apply"
                 className="inline-flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs px-7 py-3.5 rounded-full shadow-lg shadow-orange-500/30 transition-all hover:scale-105"
               >
                 <span>Sign Up as Rider</span>

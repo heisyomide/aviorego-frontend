@@ -20,7 +20,7 @@ export default function NotFound() {
   const handleTrackSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!trackingNumber.trim()) return;
-    router.push(`/track?id=${encodeURIComponent(trackingNumber.trim())}`);
+    router.push(`/dashboard/shipment/track?id=${encodeURIComponent(trackingNumber.trim())}`);
   };
 
   return (

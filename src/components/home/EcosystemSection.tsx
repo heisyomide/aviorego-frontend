@@ -10,7 +10,7 @@ export default function EcosystemSection() {
   const handleTrackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (trackingId.trim()) {
-      window.location.href = `/track/${trackingId.trim()}`;
+      window.location.href = `/dashboard/shipment/${trackingId.trim()}`;
     }
   };
 
@@ -47,7 +47,7 @@ export default function EcosystemSection() {
               </div>
             </div>
             <Link
-              href="/shipments/create"
+              href="/dashboard"
               className="inline-flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 rounded-full transition-all"
             >
               <span>Send Personal Package</span>
