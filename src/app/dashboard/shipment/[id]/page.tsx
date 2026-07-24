@@ -14,6 +14,7 @@ import ShipmentTimeline from "../components/ShipmentTimeline";
 import type { LiveLocation, Shipment } from "../types";
 
 interface TrackingShipment extends Omit<Shipment, "rider"> {
+  verificationPin?: string;
   rider?: {
     id: string;
     name?: string;
@@ -70,7 +71,7 @@ export default function ShipmentPage() {
     };
   }, [shipmentId, token]);
 
-  // Handle live WebSocket pipeline events
+  // Handle live WebSocket pipeline events & status updates
   useEffect(() => {
     if (!shipment?.id) return;
 
@@ -84,11 +85,17 @@ export default function ShipmentPage() {
       });
     };
 
+    const handleStatusUpdate = (updatedShipment: Partial<TrackingShipment>) => {
+      setShipment((prev) => (prev ? { ...prev, ...updatedShipment } : prev));
+    };
+
     socket.on("tracking:update", handleTrackingUpdate);
+    socket.on("shipment:statusUpdate", handleStatusUpdate);
 
     return () => {
       socket.emit("customer:leaveShipment", shipment.id);
       socket.off("tracking:update", handleTrackingUpdate);
+      socket.off("shipment:statusUpdate", handleStatusUpdate);
       socket.disconnect();
     };
   }, [shipment?.id]);
@@ -114,9 +121,40 @@ export default function ShipmentPage() {
     );
   }
 
+  const isDelivered = shipment.status === "DELIVERED";
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4 py-2">
       <ShipmentDetailsHeader trackingCode={shipment.trackingCode} status={shipment.status} />
+
+      {/* VERIFICATION PIN & DELIVERY STATUS CARD */}
+      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 text-white shadow-lg flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="space-y-1 text-center md:text-left">
+          <span className="text-xs uppercase tracking-wider text-neutral-400 font-semibold">
+            Delivery Verification
+          </span>
+          <h3 className="text-lg font-bold text-white">
+            {isDelivered ? "Package Successfully Delivered 🎉" : "Share Verification PIN with Rider"}
+          </h3>
+          <p className="text-xs text-neutral-400 max-w-md">
+            {isDelivered
+              ? "The delivery PIN has been verified, payment released to rider, and order completed."
+              : "Give this code to the rider upon arrival at the destination to complete your delivery."}
+          </p>
+        </div>
+
+        {shipment.verificationPin && (
+          <div className="flex flex-col items-center bg-neutral-800 border border-neutral-700/80 px-6 py-3 rounded-xl">
+            <span className="text-[10px] text-neutral-400 uppercase tracking-widest font-mono">
+              SECURITY PIN
+            </span>
+            <span className="text-2xl font-black font-mono tracking-widest text-emerald-400">
+              {shipment.verificationPin}
+            </span>
+          </div>
+        )}
+      </div>
+
       <ShipmentTracking shipment={shipment} liveLocation={liveLocation} />
       <ShipmentDetails shipment={shipment as unknown as Shipment} />
       <ShipmentTimeline timeline={shipment.timelineEvents} />
