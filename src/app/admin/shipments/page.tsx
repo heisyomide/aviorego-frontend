@@ -37,7 +37,7 @@ const statusTabs = [
 ];
 
 export default function ShipmentsPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   // Dynamic Framework States
   const [activeTab, setActiveTab] = useState('all');

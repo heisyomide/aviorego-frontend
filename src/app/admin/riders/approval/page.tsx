@@ -30,7 +30,7 @@ function DocViewer({ rider, onClose }: { rider: any; onClose: () => void }) {
 }
 
 export default function RiderApprovalPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   
   const [viewingDoc, setViewingDoc] = useState<any>(null);
   const [pendingRiders, setPendingRiders] = useState<any[]>([]);

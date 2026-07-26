@@ -56,7 +56,7 @@ export interface RiderApplication {
 
 export default function AdminControlTower() {
   // Synchronized precisely to your live port 5000 environment architecture
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   // Navigation & Filtering States
   const [currentTab, setCurrentTab] = useState<AdminTab>('OVERVIEW');

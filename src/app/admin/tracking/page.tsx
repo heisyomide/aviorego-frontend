@@ -23,7 +23,7 @@ interface TelemetryRider {
 }
 
 export default function LiveTrackingPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
   const [ridersMap, setRidersMap] = useState<Record<string, TelemetryRider>>({});
   const [selectedRiderId, setSelectedRiderId] = useState<string | null>(null);
