@@ -14,16 +14,15 @@ interface Step4Props {
 export default function Step4DocumentsUpload({ formData, onUpload, onNext, onBack, uploading }: Step4Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.driversLicenseDoc && formData.vehiclePaperDoc && formData.insuranceDoc && formData.roadWorthinessDoc) {
-      onNext();
-    }
+    // Allow progression without requiring any of the documents
+    onNext();
   };
 
   const documentSlots = [
-    { label: "Driver's License File", key: 'driversLicenseDoc' },
-    { label: 'Vehicle Papers', key: 'vehiclePaperDoc' },
-    { label: 'Insurance Certificate', key: 'insuranceDoc' },
-    { label: 'Road Worthiness Doc', key: 'roadWorthinessDoc' },
+    { label: "Driver's License File (Optional)", key: 'driversLicenseDoc' },
+    { label: 'Vehicle Papers (Optional)', key: 'vehiclePaperDoc' },
+    { label: 'Insurance Certificate (Optional)', key: 'insuranceDoc' },
+    { label: 'Road Worthiness Doc (Optional)', key: 'roadWorthinessDoc' },
   ];
 
   return (
@@ -33,7 +32,8 @@ export default function Step4DocumentsUpload({ formData, onUpload, onNext, onBac
           <div key={doc.key} className="space-y-1.5">
             <label className="block text-xs font-bold text-zinc-500">{doc.label}</label>
             <label className="flex items-center justify-between border border-zinc-200 bg-zinc-50 rounded-xl px-4 py-3.5 cursor-pointer hover:bg-zinc-100/50 transition">
-              <input type="file" required={!formData[doc.key]} onChange={e => onUpload(e, doc.key)} className="hidden" />
+              {/* Note: required removed so it's strictly optional */}
+              <input type="file" onChange={e => onUpload(e, doc.key)} className="hidden" />
               <div className="flex items-center gap-2 text-zinc-500">
                 <FileText className="h-4 w-4 text-zinc-400" />
                 <span className="text-xs font-medium truncate max-w-[120px]">
@@ -47,10 +47,17 @@ export default function Step4DocumentsUpload({ formData, onUpload, onNext, onBac
       </div>
 
       <div className="grid grid-cols-3 gap-3 pt-4">
-        <button type="button" onClick={onBack} className="rounded-xl border border-zinc-200 text-zinc-700 py-3 text-sm font-semibold hover:bg-zinc-50 transition cursor-pointer">Back</button>
+        <button 
+          type="button" 
+          onClick={onBack} 
+          className="rounded-xl border border-zinc-200 text-zinc-700 py-3 text-sm font-semibold hover:bg-zinc-50 transition cursor-pointer"
+        >
+          Back
+        </button>
+
         <button 
           type="submit" 
-          disabled={uploading || !formData.driversLicenseDoc || !formData.vehiclePaperDoc || !formData.insuranceDoc || !formData.roadWorthinessDoc} 
+          disabled={uploading} 
           className="col-span-2 rounded-xl bg-emerald-700 text-white py-3 text-sm font-semibold hover:bg-emerald-800 disabled:opacity-40 transition cursor-pointer"
         >
           {uploading ? 'Uploading Paperworks...' : 'Continue'}
