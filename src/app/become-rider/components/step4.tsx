@@ -14,7 +14,7 @@ interface Step4Props {
 export default function Step4DocumentsUpload({ formData, onUpload, onNext, onBack, uploading }: Step4Props) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Allow progression without requiring any of the documents
+   
     onNext();
   };
 
