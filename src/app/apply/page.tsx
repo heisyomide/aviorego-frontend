@@ -1,11 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
-  Package,
-  Bike,
   ShieldCheck,
   CheckCircle2,
   ArrowRight,
@@ -14,20 +11,14 @@ import {
   Clock,
   Building2,
   Sparkles,
-  Menu,
-  X,
   Award,
   TrendingUp,
 } from 'lucide-react';
-
-// Import Footer from home components
-import Footer from '../../components/home/Footer';
 
 const TOTAL_ORIENTATION_STEPS = 4;
 
 export default function RiderApplyInfoPage() {
   const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
   const nextStep = () => {
@@ -35,7 +26,7 @@ export default function RiderApplyInfoPage() {
       setCurrentStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      router.push('/become-rider');
+      router.push('/register/rider');
     }
   };
 
@@ -47,85 +38,8 @@ export default function RiderApplyInfoPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased selection:bg-emerald-100 selection:text-emerald-900">
-      {/* 1. HEADER */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="bg-emerald-700 text-white p-2 rounded-xl group-hover:bg-emerald-800 transition-colors">
-              <Package size={22} className="stroke-[2.5]" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-black text-2xl tracking-tight text-slate-900 flex items-center gap-1.5">
-                Aviorè{' '}
-                <span className="inline-flex items-center bg-emerald-700 text-white text-[11px] px-2.5 py-0.5 rounded-full font-bold tracking-normal align-middle shadow-xs">
-                  Go
-                </span>
-              </span>
-              <span className="text-[9px] uppercase tracking-widest font-bold text-slate-400 -mt-0.5">
-                Rider Partner Portal
-              </span>
-            </div>
-          </Link>
-
-          {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-xs font-semibold text-slate-600">
-            <Link href="/" className="hover:text-slate-900 transition-colors">
-              Home
-            </Link>
-            <Link href="/how-it-works" className="hover:text-slate-900 transition-colors">
-              How it Works
-            </Link>
-            <Link href="/coverage" className="hover:text-slate-900 transition-colors">
-              Coverage
-            </Link>
-            <span className="text-emerald-700 font-bold flex items-center gap-1">
-              <Bike size={14} /> Rider Info & Orientation
-            </span>
-          </nav>
-
-          <div className="hidden md:flex items-center gap-3">
-            <Link
-              href="/become-rider"
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition-all active:scale-95 flex items-center gap-1.5"
-            >
-              <span>Skip Info & Register</span>
-              <ArrowRight size={14} />
-            </Link>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 focus:outline-none"
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-3 pb-6 space-y-3">
-            <Link href="/" className="block py-2 text-sm font-semibold text-slate-700">
-              Home
-            </Link>
-            <Link href="/how-it-works" className="block py-2 text-sm font-semibold text-slate-700">
-              How It Works
-            </Link>
-            <Link href="/coverage" className="block py-2 text-sm font-semibold text-slate-700">
-              Coverage Network
-            </Link>
-            <Link
-              href="/become-rider"
-              className="block py-2.5 text-center text-sm font-bold text-white bg-emerald-700 rounded-xl"
-            >
-              Register Now
-            </Link>
-          </div>
-        )}
-      </header>
-
-      {/* 2. HERO / ORIENTATION BANNER */}
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased selection:bg-emerald-100 selection:text-emerald-900 pb-16">
+      {/* 1. HERO / ORIENTATION BANNER */}
       <section className="bg-slate-950 text-white border-b border-slate-800 py-10 lg:py-14">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-3">
           <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1 rounded-full text-emerald-400 text-xs font-bold">
@@ -143,8 +57,8 @@ export default function RiderApplyInfoPage() {
         </div>
       </section>
 
-      {/* 3. STEPPER PROGRESS BAR */}
-      <div className="sticky top-20 z-40 bg-white border-b border-slate-200 shadow-xs">
+      {/* 2. STEPPER PROGRESS BAR */}
+      <div className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-xs">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between mb-2 text-[11px] font-extrabold uppercase tracking-wider text-emerald-700">
             <span>Orientation Progress</span>
@@ -194,7 +108,7 @@ export default function RiderApplyInfoPage() {
         </div>
       </div>
 
-      {/* 4. ORIENTATION CONTENT STEPPER */}
+      {/* 3. ORIENTATION CONTENT STEPPER */}
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
         <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-xs space-y-8">
           {/* STEP 1: OVERVIEW & WHY JOIN */}
@@ -474,9 +388,6 @@ export default function RiderApplyInfoPage() {
           </div>
         </div>
       </main>
-
-      {/* 5. FOOTER */}
-      <Footer />
     </div>
   );
 }

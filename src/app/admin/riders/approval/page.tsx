@@ -68,7 +68,7 @@ export default function RiderApprovalPage() {
     loadPendingKYC();
   }, [BACKEND_URL]);
 
-  // 2. Transmit target verification evaluation values (Approve / Reject)
+ // 2. Transmit target verification evaluation values (Approve / Reject)
   async function handleEvaluation(applicationId: string, approve: boolean) {
     const confirmation = window.confirm(`Are you sure you want to ${approve ? 'APPROVE' : 'REJECT'} this rider application?`);
     if (!confirmation) return;
@@ -86,14 +86,21 @@ export default function RiderApprovalPage() {
         }),
       });
 
+      const responseData = await res.json().catch(() => ({}));
+
       if (!res.ok) {
-        throw new Error('Could not record application evaluation decision.');
+        // Extract NestJS exception message
+        const serverMessage = Array.isArray(responseData.message)
+          ? responseData.message.join(', ')
+          : responseData.message || 'Could not record application evaluation decision.';
+        
+        throw new Error(serverMessage);
       }
 
       // Evict completed document out of screen list state immediately
       setPendingRiders((prev) => prev.filter((item) => item.id !== applicationId));
     } catch (err: any) {
-      console.error(err);
+      console.error('Evaluation Error:', err);
       alert(err.message || 'Evaluation update failed.');
     }
   }

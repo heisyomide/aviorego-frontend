@@ -1,15 +1,21 @@
 export interface RiderProfile {
-    id: string;
+  id: string;
+  userId?: string;
+
   firstName: string;
   lastName: string;
+  fullName?: string;
+  initials?: string;
 
   email: string;
   phoneNumber: string;
+
   status:
-  | 'PENDING_VERIFICATION'
-  | 'VERIFIED'
-  | 'REJECTED'
-  | 'SUSPENDED';
+    | 'PENDING_VERIFICATION'
+    | 'VERIFIED'
+    | 'REJECTED'
+    | 'SUSPENDED';
+
   avatarUrl: string | null;
 
   nin: string | null;
@@ -27,6 +33,7 @@ export interface RiderProfile {
   trustScore: number;
 
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface UpdateProfileRequest {

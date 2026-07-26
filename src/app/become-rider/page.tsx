@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../lib/api';
 
@@ -14,11 +14,17 @@ import Step6CompliancePolicies from './components/step6';
 
 export default function RiderOnboardingWizard() {
   const router = useRouter();
+
+  // 🛡️ Security Guard States
+  const [isVerifyingAuth, setIsVerifyingAuth] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [authError, setAuthError] = useState('');
+
   const [step, setStep] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  
+
   const [formData, setFormData] = useState({
     // Section 1: Registration Core Identities & Personal Details
     email: '',
@@ -37,7 +43,7 @@ export default function RiderOnboardingWizard() {
     emergencyContactRelationship: '',
 
     // Section 2: Identity Verification
-    idType: 'NATIONAL_ID', // Reverts to default step selector fallback value
+    idType: 'NATIONAL_ID',
     idNumber: '',
     idFrontImage: '',
     idBackImage: '',
@@ -60,7 +66,7 @@ export default function RiderOnboardingWizard() {
 
     // Section 5: Bank Information
     bankName: '',
-    bankCode: '', 
+    bankCode: '',
     accountNumber: '',
     accountName: '',
 
@@ -70,11 +76,73 @@ export default function RiderOnboardingWizard() {
     acceptedPrivacy: false,
   });
 
+  // 🛡️ Security Guard: Verifies Auth Token & Email Status
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkVerificationStatus = async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('aviore_token') : null;
+
+      // 1. If no token, kick to login immediately
+      if (!token) {
+        router.replace('/login');
+        return;
+      }
+
+      try {
+        // 2. Fetch user profile from backend
+        const res = await api.get('/auth/me'); // Or '/users/profile' depending on your backend route
+        const user = res.data;
+
+        if (!isMounted) return;
+
+        // Auto-fill user email into form state
+        if (user?.email) {
+          setFormData((p) => ({ ...p, email: user.email }));
+        }
+
+        // 3. 🚨 Email Verification Enforcement Check
+        const isVerified = user?.isEmailVerified === true || user?.status === 'VERIFIED';
+
+        if (!isVerified) {
+          // Block access and redirect to email confirmation page
+          router.replace('/confirm-email');
+          return;
+        }
+
+        // 4. Authorized: Grant access to UI
+        setIsAuthorized(true);
+      } catch (err: any) {
+        console.error('[AUTH GUARD REJECTION]', err);
+        if (isMounted) {
+          // If response status is explicitly 401 Unauthorized, token is expired/invalid
+          if (err.response?.status === 401) {
+            localStorage.removeItem('access_token');
+            router.replace('/login');
+          } else {
+            // For network errors or server glitches, show alert rather than clearing token
+            setAuthError('Unable to verify security clearance. Please check your connection.');
+          }
+        }
+      } finally {
+        if (isMounted) {
+          setIsVerifyingAuth(false);
+        }
+      }
+    };
+
+    checkVerificationStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
+  // Keep all your original functions (updateField, handleResolveBankAccount, handleBackendUpload, etc.)
   const updateField = (key: string, value: any) => {
     setFormData((p) => ({ ...p, [key]: value }));
   };
 
-  // Bank Proxy Resolver Lookup Pipeline
   const handleResolveBankAccount = async (accountNum: string, bankCode: string) => {
     if (accountNum.length === 10 && bankCode) {
       try {
@@ -83,12 +151,11 @@ export default function RiderOnboardingWizard() {
           updateField('accountName', res.data.accountName);
         }
       } catch (err) {
-        throw err; 
+        throw err;
       }
     }
   };
 
-  // Authenticated Backend Proxy Media Upload Routing Array Pipeline
   const handleBackendUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: string) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -101,39 +168,20 @@ export default function RiderOnboardingWizard() {
 
     let endpointUrl = '';
     switch (key) {
-      case 'idFrontImage':
-        endpointUrl = '/uploads/rider/id-front';
-        break;
-      case 'idBackImage':
-        endpointUrl = '/uploads/rider/id-back';
-        break;
-      case 'selfieImage':
-        endpointUrl = '/uploads/rider/selfie';
-        break;
-      case 'vehiclePhoto':
-        endpointUrl = '/uploads/rider/vehicle-photo';
-        break;
-      case 'driversLicenseDoc':
-        endpointUrl = '/uploads/license';
-        break;
-      case 'vehiclePaperDoc':
-        endpointUrl = '/uploads/rider/vehicle-paper';
-        break;
-      case 'insuranceDoc':
-        endpointUrl = '/uploads/rider/insurance';
-        break;
-      case 'roadWorthinessDoc':
-        endpointUrl = '/uploads/rider/road-worthiness';
-        break;
-      default:
-        endpointUrl = '/uploads/rider/profile-photo';
+      case 'idFrontImage': endpointUrl = '/uploads/rider/id-front'; break;
+      case 'idBackImage': endpointUrl = '/uploads/rider/id-back'; break;
+      case 'selfieImage': endpointUrl = '/uploads/rider/selfie'; break;
+      case 'vehiclePhoto': endpointUrl = '/uploads/rider/vehicle-photo'; break;
+      case 'driversLicenseDoc': endpointUrl = '/uploads/license'; break;
+      case 'vehiclePaperDoc': endpointUrl = '/uploads/rider/vehicle-paper'; break;
+      case 'insuranceDoc': endpointUrl = '/uploads/rider/insurance'; break;
+      case 'roadWorthinessDoc': endpointUrl = '/uploads/rider/road-worthiness'; break;
+      default: endpointUrl = '/uploads/rider/profile-photo';
     }
 
     try {
       const res = await api.post(endpointUrl, backendData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       if (res.data?.url) {
@@ -170,18 +218,13 @@ export default function RiderOnboardingWizard() {
 
     setSubmitting(true);
     setError('');
-    
-    // 🌟 Create a safe, whitelisted clone matching the strict NestJS DTO architecture rules perfectly
+
     const whitelistedPayload = {
       ...formData,
-      // If your interface select binds assign "NATIONAL_ID", translate it here to "NIN" if that's what your Prisma validation error requires.
       idType: formData.idType === 'NATIONAL_ID' ? 'NIN' : formData.idType,
-      
-      // 🌟 TRANSLATE 'BIKE' TO 'MOTORCYCLE' TO MATCH YOUR PRISMA ENUM EXACTLY
       vehicleType: formData.vehicleType === 'BIKE' ? 'MOTORCYCLE' : formData.vehicleType,
     };
 
-    // 🌟 STRIP OUT THE UNEXPECTED FIELD THAT NESTJS IS REJECTING
     delete (whitelistedPayload as any).emergencyRelationship;
 
     try {
@@ -209,6 +252,42 @@ export default function RiderOnboardingWizard() {
     'Final Agreements'
   ];
 
+  // 1. Loading State Screen
+  if (isVerifyingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 font-sans select-none">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
+          <p className="text-sm font-medium text-zinc-500">Verifying account security status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Authorization Error Screen
+  if (authError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 font-sans">
+        <div className="w-full max-w-md bg-white p-6 rounded-2xl border border-zinc-200 text-center space-y-4 shadow-sm">
+          <h3 className="text-lg font-bold text-zinc-900">Verification Error</h3>
+          <p className="text-sm text-zinc-600">{authError}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full py-2.5 bg-emerald-600 text-white font-semibold rounded-xl hover:bg-emerald-700 transition"
+          >
+            Retry Verification
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Block UI if not authorized
+  if (!isAuthorized) {
+    return null;
+  }
+
+  // 4. Render Onboarding Form Wizard
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 font-sans select-none">
       <div className="w-full max-w-xl bg-white rounded-3xl border border-zinc-200 p-8 shadow-sm space-y-6">
