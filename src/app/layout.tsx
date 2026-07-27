@@ -24,8 +24,11 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
+// 🟢 Updated domain base URL
+const DOMAIN_URL = "https://aviorego.com.ng";
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://aviore.com"),
+  metadataBase: new URL(DOMAIN_URL),
   title: {
     default: "Aviorè Go | Smart, Secure & Reliable Logistics across Osun & Oyo",
     template: "%s | Aviorè Go",
@@ -50,6 +53,14 @@ export const metadata: Metadata = {
   publisher: "Aviorè",
   applicationName: "Aviorè Go",
   category: "Logistics & Commerce",
+  
+  // 🟢 iOS / Safari PWA Installability Config
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Aviorè Go",
+  },
+
   robots: {
     index: true,
     follow: true,
@@ -63,14 +74,15 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "Aviorè Go | Delivering What Matters Most",
-    description: "Fast, safe, and reliable parcel delivery across Osun & Oyo State. Real-time GPS tracking & escrow security.",
-    url: "https://aviore.com",
+    description:
+      "Fast, safe, and reliable parcel delivery across Osun & Oyo State. Real-time GPS tracking & escrow security.",
+    url: DOMAIN_URL,
     siteName: "Aviorè Go",
     locale: "en_NG",
     type: "website",
     images: [
       {
-        url: "/images/og-image.jpg",
+        url: `${DOMAIN_URL}/images/og-image.jpg`,
         width: 1200,
         height: 630,
         alt: "Aviorè Go Logistics",
@@ -80,8 +92,9 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Aviorè Go",
-    description: "Smart, secure & reliable parcel delivery across Osun & Oyo State.",
-    images: ["/images/og-image.jpg"],
+    description:
+      "Smart, secure & reliable parcel delivery across Osun & Oyo State.",
+    images: [`${DOMAIN_URL}/images/og-image.jpg`],
   },
   icons: {
     icon: "/favicon.ico",
@@ -100,18 +113,23 @@ export default function RootLayout({
     "@context": "https://schema.org",
     "@type": "LogisticsService",
     name: "Aviorè Go",
-    url: "https://aviore.com",
-    logo: "https://aviore.com/images/logo.png",
-    description: "Fast, safe and reliable parcel delivery across Osun and Oyo State.",
+    url: DOMAIN_URL,
+    logo: `${DOMAIN_URL}/images/logo.png`,
+    description:
+      "Fast, safe and reliable parcel delivery across Osun and Oyo State.",
     areaServed: [
       { "@type": "AdministrativeArea", name: "Osun State" },
-      { "@type": "AdministrativeArea", name: "Oyo State" }
+      { "@type": "AdministrativeArea", name: "Oyo State" },
     ],
     serviceType: "Parcel Courier, Express Delivery, Smart Delivery",
   };
 
   return (
-    <html lang="en" className={`${jakarta.variable} ${inter.variable}`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${jakarta.variable} ${inter.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script
           type="application/ld+json"
