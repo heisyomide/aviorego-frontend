@@ -4,6 +4,7 @@ import "./globals.css";
 import ReactQueryProvider from "../providers/ReactQueryProvider";
 import { AuthProvider } from "../context/AuthContext";
 import SplashGate from "../components/SplashGate";
+import PushNotificationManager from "../components/PushNotificationManager";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -131,6 +132,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* 🟢 Force browser to load Aviorè logo as favicon */}
+        <link rel="icon" href="/images/logo.png" sizes="any" />
+        <link rel="shortcut icon" href="/images/logo.png" />
+        <link rel="apple-touch-icon" href="/images/logo.png" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -139,7 +144,11 @@ export default function RootLayout({
       <body className="min-h-screen bg-[#f8fafc] text-neutral-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
         <ReactQueryProvider>
           <AuthProvider>
-            <SplashGate>{children}</SplashGate>
+            <SplashGate>
+              {/* 🟢 Push Notification Prompt Component */}
+              <PushNotificationManager />
+              {children}
+            </SplashGate>
           </AuthProvider>
         </ReactQueryProvider>
       </body>
