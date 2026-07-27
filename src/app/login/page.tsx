@@ -201,7 +201,7 @@ export default function LoginPage() {
           {/* Desktop Illustration Placeholder */}
           <div className="relative w-80 h-80 mx-auto mb-8">
             <Image 
-              src="/images/delivery-illustration.svg" 
+              src="/images/logo.png" 
               alt="Delivery Rider"
               fill
               className="object-contain"
@@ -231,7 +231,7 @@ export default function LoginPage() {
             {/* Mobile Illustration */}
             <div className="w-48 h-32 relative">
                <Image 
-                src="/images/delivery-illustration-mobile.svg" 
+                src="/images/logo.png" 
                 alt="Delivery Rider"
                 fill
                 className="object-contain"
