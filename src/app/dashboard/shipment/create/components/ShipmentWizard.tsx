@@ -142,65 +142,75 @@ const createShipment = async () => {
   return result.data;
 };
 const initializeFlutterwavePayment = async () => {
-  // Prevent duplicate triggers if already loading or pricing not ready
-  if (!pricing || paymentLoading) return;
+  if (!pricing) return;
 
   try {
     setPaymentLoading(true);
 
-    // 1. Create the shipment in AWAITING_PAYMENT status
+    // 1. First save or update shipment record
     const shipment = await createShipment();
-
-    if (!shipment?.id) {
-      throw new Error("Failed to create shipment. Please try again.");
-    }
-
     setTrackingCode(shipment.trackingCode);
 
-    // 2. Prepare user payload safely
+    // 2. Resolve frontend redirect URL
+    const origin =
+      typeof window !== 'undefined' && window.location.origin
+        ? window.location.origin
+        : 'http://localhost:3000';
+    const redirectUrl = `${origin}/payment/verify`;
+
+    // 3. Prepare payload
+    const customerName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Valued Customer';
+    const customerEmail = user?.email || 'customer@aviorego.com.ng';
+
     const payload = {
       shipmentId: shipment.id,
-      customerId: user?.id,
-      customerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Customer',
-      email: user?.email || '',
-      phone: user?.phoneNumber || user?.phone || '',
-      amount: Number(shipment.totalPrice || pricing.totalDeliveryFee),
-      redirectUrl: `${window.location.origin}/payment/verify`,
+      email: customerEmail,
+      name: customerName,
+      redirectUrl: redirectUrl,
     };
 
-    // 3. Call NestJS backend initialization route
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/flutterwave/initialize`,
-      {
-        method: "POST",
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    console.log('📡 Requesting Flutterwave Init from:', `${apiUrl}/flutterwave/initialize`);
+
+    // 4. Send request to NestJS backend
+    let response: Response;
+    try {
+      response = await fetch(`${apiUrl}/flutterwave/initialize`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify(payload),
-      }
-    );
-
-    const result = await response.json();
-
-    // Extract payment link safely regardless of global response interceptors
-    const flutterwaveUrl =
-      result.data?.link ||
-      result.data?.data?.link ||
-      result.link;
-
-    if (!response.ok || !flutterwaveUrl) {
+      });
+    } catch (netErr: any) {
+      console.error('Network Error Details:', netErr);
       throw new Error(
-        result.message || result.error || "Failed to generate Flutterwave payment link."
+        `Network error: Cannot reach NestJS server at ${apiUrl}. Verify your backend server is running on port 5000 and CORS is enabled.`
       );
     }
 
-    // 4. Redirect top-level window directly to Flutterwave hosted page
-    window.location.href = flutterwaveUrl;
+    const result = await response.json().catch(() => null);
 
+    if (!response.ok) {
+      console.error('Backend returned error status:', response.status, result);
+      const serverMsg = Array.isArray(result?.message)
+        ? result.message.join(', ')
+        : result?.message || `Server Error (${response.status})`;
+      throw new Error(serverMsg);
+    }
+
+    // 5. Check payment link returned
+    const paymentLink = result?.link || result?.data?.link;
+    if (!paymentLink) {
+      throw new Error('Payment link missing in response from backend.');
+    }
+
+    console.log('✅ Redirecting to Flutterwave Live Link:', paymentLink);
+    window.location.href = paymentLink;
   } catch (error: any) {
-    console.error("Flutterwave initialization failed:", error);
-    alert(error.message || "Unable to initialize payment. Please try again.");
+    console.error('Flutterwave initialization failed:', error);
+    alert(`Payment Failure: ${error.message}`);
   } finally {
     setPaymentLoading(false);
   }
