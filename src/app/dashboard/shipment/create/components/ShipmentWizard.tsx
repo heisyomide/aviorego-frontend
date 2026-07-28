@@ -142,17 +142,33 @@ const createShipment = async () => {
   return result.data;
 };
 const initializeFlutterwavePayment = async () => {
-  if (!pricing) return;
+  // Prevent duplicate triggers if already loading or pricing not ready
+  if (!pricing || paymentLoading) return;
 
   try {
     setPaymentLoading(true);
 
-    // 1. Create the shipment with status AWAITING_PAYMENT (or draft)
+    // 1. Create the shipment in AWAITING_PAYMENT status
     const shipment = await createShipment();
+
+    if (!shipment?.id) {
+      throw new Error("Failed to create shipment. Please try again.");
+    }
 
     setTrackingCode(shipment.trackingCode);
 
-    // 2. Call Flutterwave initialize API
+    // 2. Prepare user payload safely
+    const payload = {
+      shipmentId: shipment.id,
+      customerId: user?.id,
+      customerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Customer',
+      email: user?.email || '',
+      phone: user?.phoneNumber || user?.phone || '',
+      amount: Number(shipment.totalPrice || pricing.totalDeliveryFee),
+      redirectUrl: `${window.location.origin}/payment/verify`,
+    };
+
+    // 3. Call NestJS backend initialization route
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL}/flutterwave/initialize`,
       {
@@ -161,41 +177,27 @@ const initializeFlutterwavePayment = async () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          shipmentId: shipment.id,
-          customerId: user?.id,
-          customerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
-          email: user?.email,
-          amount: Number(shipment.totalPrice || pricing.totalDeliveryFee),
-          redirectUrl: `${window.location.origin}/payment/verify`,
-        }),
+        body: JSON.stringify(payload),
       }
     );
 
     const result = await response.json();
 
-    if (!response.ok || !result.data?.link) {
-      throw new Error(result.message || "Failed to generate Flutterwave payment link.");
+    // Extract payment link safely regardless of global response interceptors
+    const flutterwaveUrl =
+      result.data?.link ||
+      result.data?.data?.link ||
+      result.link;
+
+    if (!response.ok || !flutterwaveUrl) {
+      throw new Error(
+        result.message || result.error || "Failed to generate Flutterwave payment link."
+      );
     }
 
-    const flutterwaveUrl = result.data.link;
+    // 4. Redirect top-level window directly to Flutterwave hosted page
+    window.location.href = flutterwaveUrl;
 
-    // 3. Detect PWA standalone mode and redirect properly
-    const isPWA =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as any).standalone === true;
-
-    if (isPWA) {
-      // In PWA, open external payment URL in top-level context or system browser
-      const windowRef = window.open(flutterwaveUrl, "_blank", "noopener,noreferrer");
-      if (!windowRef) {
-        // Fallback if popup blocker triggers
-        window.location.assign(flutterwaveUrl);
-      }
-    } else {
-      // Standard desktop/mobile browser redirection
-      window.location.href = flutterwaveUrl;
-    }
   } catch (error: any) {
     console.error("Flutterwave initialization failed:", error);
     alert(error.message || "Unable to initialize payment. Please try again.");
