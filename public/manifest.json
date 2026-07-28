@@ -26,14 +26,14 @@
   "screenshots": [
     {
       "src": "/images/ogimage.jpg",
-      "sizes": "1080x720",
+      "sizes": "1254x1254",
       "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Aviorè Go Desktop Dashboard"
     },
     {
       "src": "/images/ogimage.jpg",
-      "sizes": "1080x720",
+      "sizes": "1254x1254",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Aviorè Go Mobile App"
