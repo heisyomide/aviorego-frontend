@@ -1,22 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+// 🟢 Import Fontsource fonts instead of next/font/google
+import "@fontsource/plus-jakarta-sans/400.css";
+import "@fontsource/plus-jakarta-sans/600.css";
+import "@fontsource/plus-jakarta-sans/700.css";
+import "@fontsource/inter/400.css";
+import "@fontsource/inter/500.css";
+import "@fontsource/inter/600.css";
 import "./globals.css";
 import ReactQueryProvider from "../providers/ReactQueryProvider";
 import { AuthProvider } from "../context/AuthContext";
 import SplashGate from "../components/SplashGate";
 import PushNotificationManager from "../components/PushNotificationManager";
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-jakarta",
-  display: "swap",
-});
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const viewport: Viewport = {
   themeColor: "#16a34a",
@@ -128,7 +122,6 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jakarta.variable} ${inter.variable}`}
       suppressHydrationWarning
     >
       <head>

@@ -142,75 +142,66 @@ const createShipment = async () => {
   return result.data;
 };
 const initializeFlutterwavePayment = async () => {
+  if (!pricing) return;
 
-    if (!pricing) return;
+  try {
+    setPaymentLoading(true);
 
-    try {
+    // 1. Create the shipment with status AWAITING_PAYMENT (or draft)
+    const shipment = await createShipment();
 
-        setPaymentLoading(true);
+    setTrackingCode(shipment.trackingCode);
 
-        const shipment = await createShipment();
+    // 2. Call Flutterwave initialize API
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/flutterwave/initialize`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          shipmentId: shipment.id,
+          customerId: user?.id,
+          customerName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim(),
+          email: user?.email,
+          amount: Number(shipment.totalPrice || pricing.totalDeliveryFee),
+          redirectUrl: `${window.location.origin}/payment/verify`,
+        }),
+      }
+    );
 
-        setTrackingCode(shipment.trackingCode);
+    const result = await response.json();
 
-        const response = await fetch(
-
-            `${process.env.NEXT_PUBLIC_API_URL}/flutterwave/initialize`,
-
-            {
-
-                method: "POST",
-
-                headers: {
-
-                    "Content-Type": "application/json",
-
-                    Authorization: `Bearer ${token}`,
-
-                },
-
-              body: JSON.stringify({
-  shipmentId: shipment.id,
-
-  customerId: user?.id,
-
-  customerName: `${user?.firstName} ${user?.lastName}`,
-
-  email: user?.email,
-
-  
-
-  amount: Number(shipment.totalPrice),
-
-  redirectUrl: `${window.location.origin}/payment/verify`,
-}),
-
-            }
-
-        );
-
-        const result = await response.json();
-
-        if (!response.ok) {
-
-            throw new Error(result.message);
-
-        }
-
-        window.location.href = result.data.link;
-
-    } catch (error) {
-
-        console.error(error);
-
-        alert("Unable to initialize payment.");
-
-    } finally {
-
-        setPaymentLoading(false);
-
+    if (!response.ok || !result.data?.link) {
+      throw new Error(result.message || "Failed to generate Flutterwave payment link.");
     }
 
+    const flutterwaveUrl = result.data.link;
+
+    // 3. Detect PWA standalone mode and redirect properly
+    const isPWA =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      (navigator as any).standalone === true;
+
+    if (isPWA) {
+      // In PWA, open external payment URL in top-level context or system browser
+      const windowRef = window.open(flutterwaveUrl, "_blank", "noopener,noreferrer");
+      if (!windowRef) {
+        // Fallback if popup blocker triggers
+        window.location.assign(flutterwaveUrl);
+      }
+    } else {
+      // Standard desktop/mobile browser redirection
+      window.location.href = flutterwaveUrl;
+    }
+  } catch (error: any) {
+    console.error("Flutterwave initialization failed:", error);
+    alert(error.message || "Unable to initialize payment. Please try again.");
+  } finally {
+    setPaymentLoading(false);
+  }
 };
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-md flex-col bg-white">
