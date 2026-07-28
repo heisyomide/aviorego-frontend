@@ -11,15 +11,15 @@
   "theme_color": "#16a34a",
   "icons": [
     {
-      "src": "/images/logo.png",
-      "sizes": "1536x1024",
-      "type": "image/png",
+      "src": "/images/ogimage1.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
       "purpose": "any"
     },
     {
-      "src": "/images/logo.png",
-      "sizes": "1536x1024",
-      "type": "image/png",
+      "src": "/images/ogimage1.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
       "purpose": "maskable"
     }
   ],
