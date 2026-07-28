@@ -12,19 +12,13 @@
   "icons": [
     {
       "src": "/images/logo.png",
-      "sizes": "192x192",
+      "sizes": "1536x1024",
       "type": "image/png",
       "purpose": "any"
     },
     {
       "src": "/images/logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/images/logo.png",
-      "sizes": "512x512",
+      "sizes": "1536x1024",
       "type": "image/png",
       "purpose": "maskable"
     }
@@ -32,14 +26,14 @@
   "screenshots": [
     {
       "src": "/images/og-image.jpg",
-      "sizes": "1200x630",
+      "sizes": "1080x720",
       "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Aviorè Go Desktop Dashboard"
     },
     {
       "src": "/images/og-image.jpg",
-      "sizes": "1200x630",
+      "sizes": "1080x720",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "Aviorè Go Mobile App"
