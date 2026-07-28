@@ -25,14 +25,14 @@
   ],
   "screenshots": [
     {
-      "src": "/images/og-image.jpg",
+      "src": "/images/ogimage.jpg",
       "sizes": "1080x720",
       "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Aviorè Go Desktop Dashboard"
     },
     {
-      "src": "/images/og-image.jpg",
+      "src": "/images/ogimage.jpg",
       "sizes": "1080x720",
       "type": "image/jpeg",
       "form_factor": "narrow",
