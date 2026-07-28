@@ -1,38 +1,64 @@
-// worker/index.ts
+// workers/index.ts
 
-// Listen for incoming push notifications sent from your backend
-self.addEventListener("push", (event: any) => {
+// Declare worker global scope safely for TypeScript
+const _self = self as unknown as any;
+
+// 1. Listen for incoming push notifications from backend
+_self.addEventListener("push", (event: any) => {
   if (!event.data) return;
 
-  const data = event.data.json();
-  const title = data.title || "Aviorè Go";
-  const options = {
-    body: data.body || "You have a new update",
+  let payload = {
+    title: "Aviorè Go",
+    body: "You have a new update",
     icon: "/images/logo.png",
     badge: "/images/logo.png",
+    url: "/",
+  };
+
+  try {
+    const json = event.data.json();
+    payload = { ...payload, ...json };
+  } catch (err) {
+    payload.body = event.data.text() || payload.body;
+  }
+
+  const options: Record<string, any> = {
+    body: payload.body,
+    icon: payload.icon,
+    badge: payload.badge,
     vibrate: [100, 50, 100],
     data: {
-      url: data.url || "/", // Redirect link when notification is tapped
+      url: payload.url,
     },
   };
 
-  event.waitUntil((self as any).registration.showNotification(title, options));
+  event.waitUntil(_self.registration.showNotification(payload.title, options));
 });
 
-// Handle tap/click on notification
-self.addEventListener("notificationclick", (event: any) => {
+// 2. Handle tap/click on notification banner
+_self.addEventListener("notificationclick", (event: any) => {
   event.notification.close();
-  const targetUrl = event.notification.data?.url || "/";
+
+  const targetPath = event.notification.data?.url || "/";
 
   event.waitUntil(
-    (self as any).clients.matchAll({ type: "window" }).then((clientList: any[]) => {
+    _self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList: any[]) => {
       for (const client of clientList) {
-        if (client.url === targetUrl && "focus" in client) {
-          return client.focus();
+        try {
+          const clientUrl = new URL(client.url);
+          if (
+            (clientUrl.pathname === targetPath || client.url.endsWith(targetPath)) &&
+            "focus" in client
+          ) {
+            return client.focus();
+          }
+        } catch (e) {
+          // Fallback if URL parsing fails
         }
       }
-      if ((self as any).clients.openWindow) {
-        return (self as any).clients.openWindow(targetUrl);
+
+      if (_self.clients.openWindow) {
+        return _self.clients.openWindow(targetPath);
       }
     })
   );
