@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:10000';
+// Standardized API fallback port across the entire project
+const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export const api = axios.create({
   baseURL: BACKEND_URL,
@@ -10,15 +11,23 @@ export const api = axios.create({
   },
 });
 
-// Add a request interceptor to append the token automatically
+// Flag to prevent infinite redirect loops on concurrent 401 failures
+let isRedirecting = false;
+
+// 1. Request Interceptor: Attach Auth Bearer Token
 api.interceptors.request.use(
   (config) => {
     if (typeof window !== 'undefined') {
-      // 🌟 FIXED: Match your context key name 'aviore_token'
       const token = localStorage.getItem('aviore_token');
 
-      if (token && config.headers) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+      if (token) {
+        // Modern Axios v1.x compliant header setting
+        if (config.headers?.set) {
+          config.headers.set('Authorization', `Bearer ${token}`);
+        } else {
+          config.headers = config.headers || {};
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
       }
     }
     return config;
@@ -28,18 +37,26 @@ api.interceptors.request.use(
   }
 );
 
-// Session auto-cleanup interceptor
+// 2. Response Interceptor: Session Expiration & Auto Cleanup
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Check if error response status is 401 Unauthorized
     if (error.response?.status === 401) {
-      console.warn('Session expired or unauthorized. Clearing records...');
       if (typeof window !== 'undefined') {
-        // 🌟 FIXED: Clear matching keys
+        // Clear local credentials
         localStorage.removeItem('aviore_token');
         localStorage.removeItem('aviore_user');
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login';
+
+        const currentPath = window.location.pathname;
+
+        // Redirect to login if not already on authentication routes
+        if (!currentPath.includes('/login') && !isRedirecting) {
+          isRedirecting = true;
+          console.warn('Session expired or unauthorized access. Redirecting to login...');
+          
+          // Use window.location.assign or router dispatch to redirect
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
         }
       }
     }

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { api } from '../../../../lib/api'; // Custom Axios client with auto-injected 'aviore_token'
 
 interface CustomerDetail {
   id: string;
@@ -23,7 +24,6 @@ interface CustomerDetail {
 }
 
 export default function CustomerDetailPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   const params = useParams();
   const customerId = params.id as string;
 
@@ -34,34 +34,34 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     if (!customerId) return;
 
+    const controller = new AbortController();
+
     async function fetchCustomerProfile() {
       try {
         setIsLoading(true);
         setErrorMessage(null);
-        
-        const res = await fetch(`${BACKEND_URL}/admin/customers/${customerId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+
+        // Uses Axios `api` instance to attach JWT token
+        const response = await api.get(`/admin/customers/${customerId}`, {
+          signal: controller.signal,
         });
 
-        if (!res.ok) {
-          throw new Error(`Profile query failed with status code: ${res.status}`);
-        }
-
-        const data = await res.json();
-        setCustomer(data);
+        setCustomer(response.data);
       } catch (err: any) {
-        console.error('Fatal failure downloading customer matrix timeline:', err);
-        setErrorMessage(err.message || 'Network connection failed while parsing user record ledger.');
+        if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
+          console.error('Fatal failure downloading customer matrix timeline:', err);
+          const serverError = err.response?.data?.message || err.message;
+          setErrorMessage(serverError || 'Network connection failed while parsing user record ledger.');
+        }
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchCustomerProfile();
-  }, [customerId, BACKEND_URL]);
+
+    return () => controller.abort();
+  }, [customerId]);
 
   if (isLoading) {
     return (
@@ -111,7 +111,7 @@ export default function CustomerDetailPage() {
 
         <div className="bg-white border border-neutral-200 p-4 rounded-2xl shadow-sm">
           <div className="text-[10px] font-black uppercase text-neutral-400 mb-1">Quality Metric Rating</div>
-          <div className="text-xl font-bold text-amber-500">★ {Number(customer.rating).toFixed(1)}</div>
+          <div className="text-xl font-bold text-amber-500">★ {Number(customer.rating || 0).toFixed(1)}</div>
         </div>
 
         <div className="bg-white border border-neutral-200 p-4 rounded-2xl shadow-sm">

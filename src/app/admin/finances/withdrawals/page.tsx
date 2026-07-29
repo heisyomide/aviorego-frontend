@@ -2,46 +2,44 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { api } from '../../../../lib/api';
 
 export default function WithdrawalRequestsPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  async function fetchPendingWithdrawals() {
+  async function fetchPendingWithdrawals(signal?: AbortSignal) {
     try {
       setLoading(true);
-      const res = await fetch(`${BACKEND_URL}/admin/finances/withdrawals`);
-      if (res.ok) {
-        const data = await res.json();
-        setRequests(data);
+      const res = await api.get('/admin/finances/withdrawals', { signal });
+      if (res.data) {
+        setRequests(res.data);
       }
-    } catch (err) {
-      console.error('Fatal retrieval tracking payload crash:', err);
+    } catch (err: any) {
+      if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
+        console.error('Fatal retrieval tracking payload crash:', err);
+      }
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    fetchPendingWithdrawals();
-  }, [BACKEND_URL]);
+    const controller = new AbortController();
+    fetchPendingWithdrawals(controller.signal);
+
+    return () => controller.abort();
+  }, []);
 
   async function updatePayoutState(id: string, approve: boolean) {
     const actionPath = approve ? 'approve' : 'reject';
     try {
-      const res = await fetch(`${BACKEND_URL}/admin/finances/withdrawals/${id}/${actionPath}`, {
-        method: 'PATCH'
-      });
-
-      if (res.ok) {
-        // Instantly slice updated entries out of memory array state
-        setRequests((prev) => prev.filter(r => r.id !== id));
-      } else {
-        alert('Action could not complete successfully.');
-      }
-    } catch (err) {
-      console.error(err);
+      await api.patch(`/admin/finances/withdrawals/${id}/${actionPath}`);
+      // Instantly slice updated entries out of memory array state
+      setRequests((prev) => prev.filter(r => r.id !== id));
+    } catch (err: any) {
+      console.error('Failed updating payout state:', err);
+      alert(err?.response?.data?.message || 'Action could not complete successfully.');
     }
   }
 

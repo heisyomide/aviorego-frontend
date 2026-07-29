@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { api } from '../../../lib/api';
 
 interface RiderItem {
   id: string;
@@ -12,8 +13,6 @@ interface RiderItem {
 }
 
 export default function RidersPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  
   const [riders, setRiders] = useState<RiderItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -24,29 +23,21 @@ export default function RidersPage() {
         setIsLoading(true);
         setErrorMessage(null);
         
-        const res = await fetch(`${BACKEND_URL}/admin/riders`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error(`Failed to download fleet registry matrix: Status ${res.status}`);
-        }
-
-        const data = await res.json();
-        setRiders(data);
+        // Authenticated GET request via Axios
+        const response = await api.get<RiderItem[]>('/admin/riders');
+        setRiders(response.data);
       } catch (err: any) {
         console.error('Fatal failure communicating with core fleet router:', err);
-        setErrorMessage(err.message || 'Network connection failed parsing active rider indexes.');
+        setErrorMessage(
+          err.response?.data?.message || err.message || 'Network connection failed parsing active rider indexes.'
+        );
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchFleetMatrix();
-  }, [BACKEND_URL]);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -93,14 +84,14 @@ export default function RidersPage() {
               riders.map((r) => (
                 <tr key={r.id} className="hover:bg-neutral-50 text-sm transition-colors duration-150">
                   <td className="p-4 font-bold text-neutral-900">{r.name}</td>
-                  <td className="p-4 font-mono text-neutral-600">{r.orders}</td>
+                  <td className="p-4 font-mono text-neutral-600">{r.orders ?? 0}</td>
                   <td className="p-4">
                     <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wide ${
                       r.status === 'Online' 
                         ? 'bg-green-50 text-green-600 border border-green-100' 
                         : 'bg-neutral-100 text-neutral-500'
                     }`}>
-                      {r.status}
+                      {r.status || 'Offline'}
                     </span>
                   </td>
                   <td className="p-4 text-right">

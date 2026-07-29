@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { api } from '../../../../lib/api';
 
-// Document Viewer Sub-component
 function DocViewer({ rider, onClose }: { rider: any; onClose: () => void }) {
   const nameStr = rider.name || `${rider.firstName || ''} ${rider.lastName || ''}`.trim() || 'Rider';
   
@@ -30,35 +30,23 @@ function DocViewer({ rider, onClose }: { rider: any; onClose: () => void }) {
 }
 
 export default function RiderApprovalPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  
   const [viewingDoc, setViewingDoc] = useState<any>(null);
   const [pendingRiders, setPendingRiders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 1. Fetch submitted applications from storage database
   async function loadPendingKYC() {
     try {
       setIsLoading(true);
       setErrorMessage(null);
       
-      const res = await fetch(`${BACKEND_URL}/admin/riders/pending-kyc`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!res.ok) {
-        throw new Error(`Failed to load applications: Code ${res.status}`);
-      }
-
-      const data = await res.json();
-      setPendingRiders(data);
+      const response = await api.get<any[]>('/admin/riders/pending-kyc');
+      setPendingRiders(response.data);
     } catch (err: any) {
       console.error('KYC Payload Download Failure:', err);
-      setErrorMessage(err.message || 'Failed connecting to validation servers.');
+      setErrorMessage(
+        err.response?.data?.message || err.message || 'Failed connecting to validation servers.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -66,42 +54,29 @@ export default function RiderApprovalPage() {
 
   useEffect(() => {
     loadPendingKYC();
-  }, [BACKEND_URL]);
+  }, []);
 
- // 2. Transmit target verification evaluation values (Approve / Reject)
   async function handleEvaluation(applicationId: string, approve: boolean) {
-    const confirmation = window.confirm(`Are you sure you want to ${approve ? 'APPROVE' : 'REJECT'} this rider application?`);
+    const confirmation = window.confirm(
+      `Are you sure you want to ${approve ? 'APPROVE' : 'REJECT'} this rider application?`
+    );
     if (!confirmation) return;
 
     try {
-      const res = await fetch(`${BACKEND_URL}/admin/riders/kyc/${applicationId}/evaluate`, {
-        method: 'PATCH',
-        headers: { 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({
-          approve: approve,
-          adminId: 'SYSTEM_ADMIN_UI', // System audit identity tracker
-          reason: approve ? 'Verified successfully.' : 'Submitted tracking credentials could not be verified.'
-        }),
+      await api.patch(`/admin/riders/kyc/${applicationId}/evaluate`, {
+        approve: approve,
+        adminId: 'SYSTEM_ADMIN_UI',
+        reason: approve ? 'Verified successfully.' : 'Submitted tracking credentials could not be verified.'
       });
 
-      const responseData = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        // Extract NestJS exception message
-        const serverMessage = Array.isArray(responseData.message)
-          ? responseData.message.join(', ')
-          : responseData.message || 'Could not record application evaluation decision.';
-        
-        throw new Error(serverMessage);
-      }
-
-      // Evict completed document out of screen list state immediately
+      // Remove evaluated application from UI state
       setPendingRiders((prev) => prev.filter((item) => item.id !== applicationId));
     } catch (err: any) {
       console.error('Evaluation Error:', err);
-      alert(err.message || 'Evaluation update failed.');
+      const serverMsg = Array.isArray(err.response?.data?.message)
+        ? err.response.data.message.join(', ')
+        : err.response?.data?.message || 'Evaluation update failed.';
+      alert(serverMsg);
     }
   }
 
@@ -131,7 +106,6 @@ export default function RiderApprovalPage() {
       ) : (
         <div className="grid gap-4">
           {pendingRiders.map((rider) => {
-            // Reconcile dynamic structural parameters matching your NestJS transaction schema
             const fullName = rider.name || `${rider.firstName || ''} ${rider.lastName || ''}`.trim() || 'Unnamed Rider';
             const trackingIdNum = rider.idNumber || rider.nin || 'Unspecified';
             const operationalVehicle = rider.vehicleType || rider.vehicle || 'Motorcycle Fleet';
@@ -182,7 +156,6 @@ export default function RiderApprovalPage() {
         </div>
       )}
 
-      {/* Conditional Modal View Frame */}
       {viewingDoc && (
         <DocViewer rider={viewingDoc} onClose={() => setViewingDoc(null)} />
       )}

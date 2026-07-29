@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { api } from '../../../lib/api'; // Axios instance with auto-injected 'aviore_token'
 
 interface CustomerItem {
   id: string;
@@ -13,41 +14,39 @@ interface CustomerItem {
 }
 
 export default function CustomersPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-  
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     async function fetchLiveCustomers() {
       try {
         setIsLoading(true);
         setErrorMessage(null);
-        
-        const res = await fetch(`${BACKEND_URL}/admin/customers`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+
+        // Axios `api` instance automatically attaches `Authorization: Bearer <aviore_token>`
+        const response = await api.get('/admin/customers', {
+          signal: controller.signal,
         });
 
-        if (!res.ok) {
-          throw new Error(`Server responded with status: ${res.status}`);
-        }
-
-        const data = await res.json();
-        setCustomers(data);
+        setCustomers(response.data || []);
       } catch (err: any) {
-        console.error('Failed to load customers payload manifest:', err);
-        setErrorMessage(err.message || 'Network connectivity error fetching customer fleet profiles.');
+        if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
+          console.error('Failed to load customers payload manifest:', err);
+          const serverError = err.response?.data?.message || err.message;
+          setErrorMessage(serverError || 'Network connectivity error fetching customer fleet profiles.');
+        }
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchLiveCustomers();
-  }, [BACKEND_URL]);
+
+    return () => controller.abort();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -60,7 +59,7 @@ export default function CustomersPage() {
         )}
       </div>
 
-      {/* Network Failure HUD Alert Banner */}
+      {/* Network / Auth Failure Alert Banner */}
       {errorMessage && (
         <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-mono uppercase tracking-wide">
           ⚠️ Operational Fault: {errorMessage}
@@ -100,7 +99,7 @@ export default function CustomersPage() {
                   </td>
                   <td className="p-4 font-mono font-medium text-neutral-700">{c.orders}</td>
                   <td className="p-4 font-bold text-emerald-600 font-mono">{c.wallet}</td>
-                  <td className="p-4 font-bold text-amber-500">★ {Number(c.rating).toFixed(1)}</td>
+                  <td className="p-4 font-bold text-amber-500">★ {Number(c.rating || 0).toFixed(1)}</td>
                   <td className="p-4 text-right">
                     <Link 
                       href={`/admin/customers/${c.id}`} 

@@ -2,10 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { api } from '../../../../lib/api';
 
-// ============================================================================
-// DATA MODEL INTERFACES (Mapped to the NestJS Prisma Join Manifest)
-// ============================================================================
 export interface ShipmentDetails {
   id: string;
   trackingCode: string;
@@ -34,17 +32,11 @@ export interface ShipmentDetails {
 export default function ShipmentDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-  // State Matrix
   const [shipment, setShipment] = useState<ShipmentDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ============================================================================
-  // HOOK LAYER: SYNC DATA SOURCE FROM PORT 5000 REST ENDPOINT
-  // ============================================================================
   useEffect(() => {
     if (!id) return;
 
@@ -53,42 +45,35 @@ export default function ShipmentDetailsPage() {
         setIsLoading(true);
         setError(null);
         
-        // Target backend REST route without prefix matching Thunder Client configurations
-        const response = await fetch(`${BACKEND_URL}/admin/${id}`);
-        if (!response.ok) {
-          throw new Error(`Failed to ingest record. Status code returned: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setShipment(data);
+        const response = await api.get<ShipmentDetails>(`/admin/shipments/${id}`);
+        setShipment(response.data);
       } catch (err: any) {
-        setError(err.message || 'Fatal gateway sync error while reading database variables.');
+        setError(err.response?.data?.message || err.message || 'Fatal gateway sync error while reading database variables.');
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchShipmentDetails();
-  }, [BACKEND_URL, id]);
+  }, [id]);
 
-  // Status Badge UI configuration parser
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'IN_TRANSIT': return 'bg-blue-50 text-blue-600';
-      case 'PENDING': return 'bg-amber-50 text-amber-600';
-      case 'WAITING_RIDER': return 'bg-purple-50 text-purple-600';
-      case 'ACCEPTED': return 'bg-indigo-50 text-indigo-600';
-      case 'PICKED_UP': return 'bg-cyan-50 text-cyan-600';
-      case 'DELIVERED': return 'bg-green-50 text-green-600';
-      case 'CANCELLED': return 'bg-red-50 text-red-600';
-      default: return 'bg-neutral-100 text-neutral-600';
+      case 'IN_TRANSIT': return 'bg-blue-50 text-blue-600 border border-blue-100';
+      case 'PENDING': return 'bg-amber-50 text-amber-600 border border-amber-100';
+      case 'WAITING_RIDER': return 'bg-purple-50 text-purple-600 border border-purple-100';
+      case 'ACCEPTED': return 'bg-indigo-50 text-indigo-600 border border-indigo-100';
+      case 'PICKED_UP': return 'bg-cyan-50 text-cyan-600 border border-cyan-100';
+      case 'DELIVERED': return 'bg-green-50 text-green-600 border border-green-100';
+      case 'CANCELLED': return 'bg-red-50 text-red-600 border border-red-100';
+      default: return 'bg-neutral-100 text-neutral-600 border border-neutral-200';
     }
   };
 
   if (isLoading) {
     return (
       <div className="flex h-[60vh] items-center justify-center font-mono text-[10px] tracking-widest text-neutral-400 uppercase animate-pulse">
-        Ingesting package history vector matrices from port 5000...
+        Ingesting package metrics...
       </div>
     );
   }
@@ -131,11 +116,10 @@ export default function ShipmentDetailsPage() {
 
       {/* Synchronized Core Metrics Display */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
         <DetailCard title="Tracking Details" items={[
-          { label: 'Weight Payload Metrics', value: shipment.weight ? `${shipment.weight} kg` : 'Weight metric unlogged' },
-          { label: 'Dynamic Delivery Pin Validation', value: shipment.deliveryPin || 'Not provisioned' },
-          { label: 'Creation Timestamp Logging', value: new Date(shipment.createdAt).toLocaleString('en-NG') },
+          { label: 'Weight Payload Metrics', value: shipment.weight ? `${shipment.weight} kg` : 'Weight unlogged' },
+          { label: 'Delivery PIN Validation', value: shipment.deliveryPin || 'Not provisioned' },
+          { label: 'Created At', value: new Date(shipment.createdAt).toLocaleString('en-NG') },
         ]} />
         
         <DetailCard title="Nodes & Addresses" items={[
@@ -158,12 +142,11 @@ export default function ShipmentDetailsPage() {
         
         <DetailCard title="Financial Allocations" items={[
           { label: 'Total Gross Escrow Cost', value: `₦${Number(shipment.totalPrice).toLocaleString()}` },
-          { label: 'Platform Revenue Split (Share)', value: `₦${Number(shipment.platformShare || 0).toLocaleString()}` },
+          { label: 'Platform Revenue Split', value: `₦${Number(shipment.platformShare || 0).toLocaleString()}` },
         ]} />
-        
       </div>
 
-      {/* Core Admin Mutation Workspace Panels */}
+      {/* Operations Panel */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <ActionButton label="Reassign Rider Node" color="bg-neutral-950 hover:bg-neutral-900" onClick={() => alert('Invoking Transporter Assignment Grid...')} />
         <ActionButton label="Execute Financial Refund" color="bg-red-600 hover:bg-red-700" onClick={() => alert('Invoking Gateway Refund Trigger...')} />
@@ -171,7 +154,7 @@ export default function ShipmentDetailsPage() {
         <ActionButton label="Log System Exception" color="bg-neutral-200 text-neutral-900 hover:bg-neutral-300" onClick={() => alert('Creating support ticket...')} />
       </div>
 
-      {/* Telemetry Log Simulation Panel */}
+      {/* Dynamic Visual Log */}
       <div className="border border-neutral-200 rounded-2xl p-6 bg-neutral-50 flex flex-col items-center justify-center text-center space-y-1 h-48 font-mono">
         <p className="font-black text-[10px] text-neutral-900 uppercase tracking-widest">Dynamic Vector Tracking Interface</p>
         <p className="text-neutral-400 text-[11px] font-sans max-w-sm">
@@ -182,9 +165,6 @@ export default function ShipmentDetailsPage() {
   );
 }
 
-// ============================================================================
-// DUMB UI COMPONENT SUB-MODULE ARCHITECTURE
-// ============================================================================
 interface CardItem {
   label: string;
   value: string;

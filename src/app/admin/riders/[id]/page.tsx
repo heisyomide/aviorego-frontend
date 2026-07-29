@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { api } from '../../../../lib/api';
 
 interface RiderDetail {
   id: string;
@@ -10,16 +11,16 @@ interface RiderDetail {
   status: string;
   vehicle: string;
   wallet: string;
-  stats: { total: number; rating: number };
-  kyc: { nin: string; license: string; selfie: string };
+  stats?: { total?: number; rating?: number };
+  kyc?: { nin?: string; license?: string; selfie?: string };
 }
 
 export default function RiderProfilePage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   const { id } = useParams();
   
   const [rider, setRider] = useState<RiderDetail | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,29 +31,34 @@ export default function RiderProfilePage() {
         setIsLoading(true);
         setErrorMessage(null);
         
-        const res = await fetch(`${BACKEND_URL}/admin/riders/${id}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!res.ok) {
-          throw new Error(`Profile retrieval failed with status code: ${res.status}`);
-        }
-
-        const data = await res.json();
-        setRider(data);
+        const response = await api.get<RiderDetail>(`/admin/riders/${id}`);
+        setRider(response.data);
       } catch (err: any) {
         console.error('Fatal retrieval crash from operational logs:', err);
-        setErrorMessage(err.message || 'Network connection failed processing database query.');
+        setErrorMessage(
+          err.response?.data?.message || err.message || 'Network connection failed processing database query.'
+        );
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchRiderProfile();
-  }, [id, BACKEND_URL]);
+  }, [id]);
+
+  const handleStatusUpdate = async (action: 'SUSPEND' | 'APPROVE' | 'BAN') => {
+    if (!rider || !confirm(`Are you sure you want to perform action: ${action}?`)) return;
+
+    try {
+      setIsUpdating(true);
+      const res = await api.patch(`/admin/riders/${rider.id}/status`, { action });
+      setRider((prev) => (prev ? { ...prev, status: res.data.status || action } : null));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update rider status');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -77,7 +83,6 @@ export default function RiderProfilePage() {
 
   return (
     <div className="space-y-6 pb-20">
-      {/* Navigation breadcrumb link */}
       <div>
         <Link href="/admin/riders" className="text-[10px] font-black uppercase text-neutral-400 hover:text-neutral-950 transition-colors duration-150">
           ← Back to Fleet Registry
@@ -88,45 +93,64 @@ export default function RiderProfilePage() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-black text-neutral-950">{rider.name}</h2>
-          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wide">{rider.vehicle}</p>
+          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wide">{rider.vehicle || 'Unspecified Vehicle'}</p>
         </div>
         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${
           rider.status === 'Online' 
             ? 'bg-green-50 text-green-600 border border-green-100' 
             : 'bg-neutral-100 text-neutral-500'
         }`}>
-          {rider.status}
+          {rider.status || 'Offline'}
         </span>
       </div>
 
       {/* Primary Stats */}
       <div className="grid grid-cols-2 gap-4">
-        <Metric label="Deliveries" value={rider.stats.total.toString()} />
-        <Metric label="Rating" value={`★ ${rider.stats.rating}`} />
+        <Metric label="Deliveries" value={(rider.stats?.total ?? 0).toString()} />
+        <Metric label="Rating" value={`★ ${rider.stats?.rating ?? 'N/A'}`} />
       </div>
 
       {/* KYC & Verification Details */}
       <div className="bg-white p-6 rounded-3xl border border-neutral-200 space-y-4 shadow-sm">
         <h3 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">Verification Data</h3>
-        <InfoRow label="NIN" value={rider.kyc.nin} />
-        <InfoRow label="License" value={rider.kyc.license} />
-        <InfoRow label="Selfie Check" value={rider.kyc.selfie} />
+        <InfoRow label="NIN" value={rider.kyc?.nin || 'Not Provided'} />
+        <InfoRow label="License" value={rider.kyc?.license || 'Not Provided'} />
+        <InfoRow label="Selfie Check" value={rider.kyc?.selfie || 'Pending'} />
       </div>
 
       {/* Wallet Section */}
       <div className="bg-neutral-950 text-white p-6 rounded-3xl flex justify-between items-center shadow-md">
         <div>
           <p className="text-[10px] text-neutral-400 uppercase font-black tracking-wider">Wallet Balance</p>
-          <p className="text-2xl font-black font-mono tracking-tight">{rider.wallet}</p>
+          <p className="text-2xl font-black font-mono tracking-tight">{rider.wallet || '₦0.00'}</p>
         </div>
       </div>
 
       {/* Operations Panel */}
       <div className="grid grid-cols-2 gap-3">
-        <ActionButton label="Message" color="bg-neutral-100 text-neutral-800 hover:bg-neutral-200" />
-        <ActionButton label="Suspend" color="bg-amber-600 text-white hover:bg-amber-700" />
-        <ActionButton label="Approve" color="bg-green-600 text-white hover:bg-green-700" />
-        <ActionButton label="Ban Rider" color="bg-red-600 text-white hover:bg-red-700" />
+        <ActionButton 
+          label="Message" 
+          color="bg-neutral-100 text-neutral-800 hover:bg-neutral-200" 
+          onClick={() => alert(`Direct messaging module initialized for ${rider.name}`)}
+        />
+        <ActionButton 
+          label="Suspend" 
+          color="bg-amber-600 text-white hover:bg-amber-700" 
+          disabled={isUpdating}
+          onClick={() => handleStatusUpdate('SUSPEND')}
+        />
+        <ActionButton 
+          label="Approve" 
+          color="bg-green-600 text-white hover:bg-green-700" 
+          disabled={isUpdating}
+          onClick={() => handleStatusUpdate('APPROVE')}
+        />
+        <ActionButton 
+          label="Ban Rider" 
+          color="bg-red-600 text-white hover:bg-red-700" 
+          disabled={isUpdating}
+          onClick={() => handleStatusUpdate('BAN')}
+        />
       </div>
     </div>
   );
@@ -150,11 +174,22 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ActionButton({ label, color, onClick }: { label: string; color: string; onClick?: () => void }) {
+function ActionButton({ 
+  label, 
+  color, 
+  onClick, 
+  disabled 
+}: { 
+  label: string; 
+  color: string; 
+  onClick?: () => void; 
+  disabled?: boolean;
+}) {
   return (
     <button 
+      disabled={disabled}
       onClick={onClick}
-      className={`${color} py-4 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all duration-150 shadow-sm`}
+      className={`${color} ${disabled ? 'opacity-50 cursor-not-allowed' : ''} py-4 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all duration-150 shadow-sm`}
     >
       {label}
     </button>

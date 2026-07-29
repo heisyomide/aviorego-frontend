@@ -2,10 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { api } from '../../../lib/api';
 
-// ============================================================================
-// COMPATIBILITY INTERFACES (Mapped directly to your NestJS Prisma Model Includes)
-// ============================================================================
 export interface ShipmentRecord {
   id: string;
   trackingCode: string;
@@ -25,7 +23,6 @@ export interface ShipmentRecord {
   } | null;
 }
 
-// Map the display filters exactly to the ShipmentStatus Enums used in your backend
 const statusTabs = [
   { label: 'All', value: 'all' },
   { label: 'Pending', value: 'PENDING' },
@@ -37,9 +34,6 @@ const statusTabs = [
 ];
 
 export default function ShipmentsPage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-
-  // Dynamic Framework States
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [page, setPage] = useState(1);
@@ -48,72 +42,64 @@ export default function ShipmentsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ============================================================================
-  // EFFECTS BLOCK: LIVE REMOTE DATA HYDRATION LAYER
-  // ============================================================================
   useEffect(() => {
     async function fetchLiveShipments() {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Build target route targeting the port 5000 server structure
-        let endpoint = `${BACKEND_URL}/admin/shipments?page=${page}&limit=20`;
-        
+        const params = new URLSearchParams({
+          page: String(page),
+          limit: '20',
+        });
+
         if (activeTab !== 'all') {
-          endpoint += `&status=${activeTab}`;
+          params.append('status', activeTab);
         }
         if (searchQuery.trim() !== '') {
-          endpoint += `&search=${encodeURIComponent(searchQuery)}`;
+          params.append('search', searchQuery.trim());
         }
 
-        const response = await fetch(endpoint);
-        if (!response.ok) {
-          throw new Error(`Server returned error status code: ${response.status}`);
-        }
+        const response = await api.get<{ records: ShipmentRecord[]; meta: { total: number; page: number; limit: number } }>(
+          `/admin/shipments?${params.toString()}`
+        );
 
-        const data = await response.json();
-        setRecords(data.records || []);
-        setMeta(data.meta || { total: 0, page: 1, limit: 20 });
+        setRecords(response.data.records || []);
+        setMeta(response.data.meta || { total: 0, page: 1, limit: 20 });
       } catch (err: any) {
-        setError(err.message || 'Failed to populate manifest metrics payload streams.');
+        setError(err.response?.data?.message || err.message || 'Failed to retrieve shipments manifest.');
       } finally {
         setIsLoading(false);
       }
     }
 
-    // Debounce/Trigger ingestion whenever state dependencies mutate
     const delayDebounceFn = setTimeout(() => {
       fetchLiveShipments();
-    }, searchQuery ? 300 : 0); // 300ms input debounce for optimization
+    }, searchQuery ? 300 : 0);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [BACKEND_URL, activeTab, page, searchQuery]);
+  }, [activeTab, page, searchQuery]);
 
-  // Status utility style map parser
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'IN_TRANSIT': return 'bg-blue-50 text-blue-600';
-      case 'PENDING': return 'bg-amber-50 text-amber-600';
-      case 'ACCEPTED': return 'bg-indigo-50 text-indigo-600';
-      case 'PICKED_UP': return 'bg-cyan-50 text-cyan-600';
-      case 'DELIVERED': return 'bg-green-50 text-green-600';
-      case 'CANCELLED': return 'bg-red-50 text-red-600';
-      default: return 'bg-neutral-100 text-neutral-600';
+      case 'IN_TRANSIT': return 'bg-blue-50 text-blue-600 border border-blue-100';
+      case 'PENDING': return 'bg-amber-50 text-amber-600 border border-amber-100';
+      case 'ACCEPTED': return 'bg-indigo-50 text-indigo-600 border border-indigo-100';
+      case 'PICKED_UP': return 'bg-cyan-50 text-cyan-600 border border-cyan-100';
+      case 'DELIVERED': return 'bg-green-50 text-green-600 border border-green-100';
+      case 'CANCELLED': return 'bg-red-50 text-red-600 border border-red-100';
+      default: return 'bg-neutral-100 text-neutral-600 border border-neutral-200';
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-2xl font-black text-neutral-950 uppercase tracking-tight">Shipments</h2>
-          <p className="text-sm text-neutral-500">The heart of the company.</p>
+          <p className="text-xs text-neutral-500 font-medium">Core logistics operations and package management</p>
         </div>
-        <button className="bg-green-600 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wide hover:bg-neutral-950 transition-all">
-          + New Shipment
-        </button>
       </div>
 
       {/* Control Workspace: Search & Ingestion Stream Filters */}
@@ -125,8 +111,8 @@ export default function ShipmentsPage() {
               onClick={() => { setActiveTab(tab.value); setPage(1); }}
               className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${
                 activeTab === tab.value 
-                  ? 'bg-neutral-950 text-white' 
-                  : 'bg-white border border-neutral-200 text-neutral-400 hover:border-neutral-950'
+                  ? 'bg-neutral-950 text-white shadow-xs' 
+                  : 'bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-950 hover:text-neutral-950'
               }`}
             >
               {tab.label}
@@ -137,10 +123,10 @@ export default function ShipmentsPage() {
         <div className="w-full md:w-72">
           <input 
             type="text" 
-            placeholder="Search ID, Tracking Code, Phone..." 
+            placeholder="Search ID, Tracking Code, Customer..." 
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
-            className="w-full bg-white border border-neutral-200 rounded-xl px-4 py-2 text-xs font-medium focus:outline-none focus:border-neutral-950 text-neutral-950"
+            className="w-full bg-white border border-neutral-200 rounded-xl px-4 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-neutral-950 text-neutral-950"
           />
         </div>
       </div>
@@ -151,11 +137,11 @@ export default function ShipmentsPage() {
         </div>
       )}
 
-      {/* Main Dynamic Workspace Processing Container */}
-      <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-sm relative">
+      {/* Main Table Container */}
+      <div className="bg-white border border-neutral-200 rounded-2xl overflow-hidden shadow-xs relative">
         {isLoading && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center font-mono text-[10px] text-neutral-500 tracking-widest uppercase">
-            Ingesting Server Manifest Vectors...
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] z-10 flex items-center justify-center font-mono text-[10px] text-neutral-500 tracking-widest uppercase animate-pulse">
+            Ingesting Server Manifest Data...
           </div>
         )}
 
@@ -164,7 +150,7 @@ export default function ShipmentsPage() {
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400">ID / Code</th>
-                <th className="p-4 text-[10px] font-black uppercase text-neutral-400">Sender/Receiver</th>
+                <th className="p-4 text-[10px] font-black uppercase text-neutral-400">Sender</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400">Rider Node</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400">Price</th>
                 <th className="p-4 text-[10px] font-black uppercase text-neutral-400">Status</th>
@@ -181,18 +167,18 @@ export default function ShipmentsPage() {
                   </td>
                   <td className="p-4">
                     <p className="text-xs font-bold text-neutral-950">
-                      {w.customer ? `${w.customer.firstName} ${w.customer.lastName.slice(0, 1)}.` : 'Anonymous User'}
+                      {w.customer ? `${w.customer.firstName} ${w.customer.lastName}` : 'Anonymous User'}
                     </p>
                     <p className="text-[10px] text-neutral-400 font-sans">{w.customer?.email}</p>
                   </td>
                   <td className="p-4 text-xs font-bold text-neutral-600">
                     {w.rider?.user ? (
-                      <span className="text-neutral-900">🏍️ {w.rider.user.firstName} {w.rider.user.lastName.slice(0, 1)}.</span>
+                      <span className="text-neutral-900">🏍️ {w.rider.user.firstName} {w.rider.user.lastName}</span>
                     ) : (
-                      <span className="text-neutral-400 italic text-[10px]">Unassigned Pipeline</span>
+                      <span className="text-neutral-400 italic text-[10px]">Unassigned</span>
                     )}
                   </td>
-                  <td className="p-4 text-xs font-black text-neutral-950">
+                  <td className="p-4 text-xs font-black font-mono text-neutral-950">
                     ₦{Number(w.totalPrice).toLocaleString()}
                   </td>
                   <td className="p-4">
@@ -209,17 +195,12 @@ export default function ShipmentsPage() {
                     })}
                   </td>
                   <td className="p-4 text-right">
-                    <div className="flex justify-end gap-3">
-                      <Link 
-                        href={`/admin/shipments/${w.id}`}
-                        className="text-green-600 font-black text-[10px] uppercase hover:underline"
-                      >
-                        View
-                      </Link>
-                      <button className="text-neutral-400 hover:text-red-600 font-black text-[10px] uppercase">
-                        Cancel
-                      </button>
-                    </div>
+                    <Link 
+                      href={`/admin/shipments/${w.id}`}
+                      className="text-neutral-950 font-black text-[10px] uppercase underline hover:text-green-600 transition"
+                    >
+                      View Details
+                    </Link>
                   </td>
                 </tr>
               ))}
@@ -227,7 +208,7 @@ export default function ShipmentsPage() {
               {!isLoading && records.length === 0 && (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-neutral-400 font-medium italic text-xs">
-                    No active transaction rows encountered matches with target status parameters.
+                    No active shipment records match target parameters.
                   </td>
                 </tr>
               )}
@@ -235,15 +216,15 @@ export default function ShipmentsPage() {
           </table>
         </div>
 
-        {/* Integrated Pagination Footer Matrix */}
+        {/* Pagination Footer */}
         <div className="p-4 border-t border-neutral-200 flex items-center justify-between text-[11px] font-bold text-neutral-500 bg-neutral-50">
-          <span>Global Rows Logged: {meta.total} units</span>
+          <span>Total Rows Logged: {meta.total} units</span>
           <div className="flex gap-2">
             <button 
               type="button"
               disabled={page <= 1 || isLoading}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1.5 border border-neutral-200 rounded-lg bg-white disabled:opacity-40 text-[10px] text-neutral-950 font-black uppercase tracking-wide transition-all hover:bg-neutral-50"
+              className="px-3 py-1.5 border border-neutral-200 rounded-lg bg-white disabled:opacity-40 text-[10px] text-neutral-950 font-black uppercase tracking-wide hover:bg-neutral-50 transition"
             >
               ◀ Prev
             </button>
@@ -251,13 +232,12 @@ export default function ShipmentsPage() {
               type="button"
               disabled={page * meta.limit >= meta.total || isLoading}
               onClick={() => setPage((p) => p + 1)}
-              className="px-3 py-1.5 border border-neutral-200 rounded-lg bg-white disabled:opacity-40 text-[10px] text-neutral-950 font-black uppercase tracking-wide transition-all hover:bg-neutral-50"
+              className="px-3 py-1.5 border border-neutral-200 rounded-lg bg-white disabled:opacity-40 text-[10px] text-neutral-950 font-black uppercase tracking-wide hover:bg-neutral-50 transition"
             >
               Next ▶
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );

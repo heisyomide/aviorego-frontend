@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { api } from '../../../lib/api';
 
 export default function FinancePage() {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
   const [activeTab, setActiveTab] = useState('Transactions');
   
   const [stats, setStats] = useState<any[]>([]);
@@ -12,42 +12,42 @@ export default function FinancePage() {
   const [withdrawals, setWithdrawals] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  async function loadFinanceData() {
+  async function loadFinanceData(signal?: AbortSignal) {
     try {
       setLoading(true);
       const [statsRes, txRes, wdRes] = await Promise.all([
-        fetch(`${BACKEND_URL}/admin/finances/overview`),
-        fetch(`${BACKEND_URL}/admin/finances/transactions`),
-        fetch(`${BACKEND_URL}/admin/finances/withdrawals`)
+        api.get('/admin/finances/overview', { signal }),
+        api.get('/admin/finances/transactions', { signal }),
+        api.get('/admin/finances/withdrawals', { signal })
       ]);
 
-      if (statsRes.ok) setStats(await statsRes.json());
-      if (txRes.ok) setTransactions(await txRes.json());
-      if (wdRes.ok) setWithdrawals(await wdRes.json());
-    } catch (err) {
-      console.error('Failed syncing system ledger matrices:', err);
+      if (statsRes.data) setStats(statsRes.data);
+      if (txRes.data) setTransactions(txRes.data);
+      if (wdRes.data) setWithdrawals(wdRes.data);
+    } catch (err: any) {
+      if (err.name !== 'CanceledError' && err.name !== 'AbortError') {
+        console.error('Failed syncing system ledger matrices:', err);
+      }
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    loadFinanceData();
-  }, [BACKEND_URL]);
+    const controller = new AbortController();
+    loadFinanceData(controller.signal);
+
+    return () => controller.abort();
+  }, []);
 
   async function handleInstantApproval(id: string) {
     try {
-      const res = await fetch(`${BACKEND_URL}/admin/finances/withdrawals/${id}/approve`, {
-        method: 'PATCH'
-      });
-      if (res.ok) {
-        // Hot-reload components states securely
-        loadFinanceData();
-      } else {
-        alert('Disbursement validation error occurred.');
-      }
-    } catch (err) {
-      console.error(err);
+      await api.patch(`/admin/finances/withdrawals/${id}/approve`);
+      // Hot-reload components states securely
+      await loadFinanceData();
+    } catch (err: any) {
+      console.error('Failed to approve withdrawal:', err);
+      alert(err?.response?.data?.message || 'Disbursement validation error occurred.');
     }
   }
 

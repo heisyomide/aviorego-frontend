@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { api } from '../../../lib/api';
 
 // Channel and Audience Enums corresponding to backend Prisma/DTO schemas
 type TargetAudience = 'Everyone' | 'Customers' | 'Riders';
@@ -54,7 +55,7 @@ export default function AdminSettingsPage() {
     }
   };
 
-  // Dispatch Broadcast to Backend API
+  // Dispatch Broadcast to Backend API using shared Axios instance
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !body.trim()) {
@@ -71,37 +72,23 @@ export default function AdminSettingsPage() {
     if (target === 'Riders') targetAudienceValue = 'RIDER';
 
     try {
-      const token = localStorage.getItem('accessToken'); // Retrieve JWT token
-      const response = await fetch('/admin/broadcast', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title,
-          body,
-          targetAudience: targetAudienceValue,
-          channels,
-        }),
+      const response = await api.post('/admin/broadcast', {
+        title,
+        body,
+        targetAudience: targetAudienceValue,
+        channels,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to dispatch broadcast.');
-      }
 
       setFeedback({
         type: 'success',
-        message: `Broadcast successfully dispatched to ${data.recipientCount} recipient(s)!`,
+        message: `Broadcast successfully dispatched to ${response.data.recipientCount ?? 'selected'} recipient(s)!`,
       });
       setTitle('');
       setBody('');
     } catch (err: any) {
       setFeedback({
         type: 'error',
-        message: err.message || 'An unexpected error occurred while broadcasting.',
+        message: err.response?.data?.message || err.message || 'An unexpected error occurred while broadcasting.',
       });
     } finally {
       setIsSubmitting(false);
@@ -109,7 +96,11 @@ export default function AdminSettingsPage() {
   };
 
   const handleResolveTicket = (id: string) => {
-    setTickets(tickets.filter((t) => t.id !== id));
+    setTickets((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleReplyTicket = (ticket: SupportTicket) => {
+    alert(`Opening quick-reply channel for ticket ${ticket.code} (${ticket.user})...`);
   };
 
   return (
@@ -270,7 +261,10 @@ export default function AdminSettingsPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <button className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-[9px] font-black uppercase transition text-neutral-800">
+                  <button
+                    onClick={() => handleReplyTicket(t)}
+                    className="px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 rounded-lg text-[9px] font-black uppercase transition text-neutral-800"
+                  >
                     Reply
                   </button>
                   <button
