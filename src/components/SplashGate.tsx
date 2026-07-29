@@ -17,7 +17,19 @@ export default function SplashGate({ children }: SplashGateProps) {
     let isMounted = true;
     let timer: NodeJS.Timeout;
 
+    // Hard fail-safe: Force entry after 10 seconds so user is never permanently blocked
+    const failSafeTimer = setTimeout(() => {
+      if (isMounted && !isReady) {
+        console.warn("SplashGate fail-safe triggered: Proceeding to app...");
+        setIsReady(true);
+      }
+    }, 10000);
+
     const wakeServerAndPreload = async () => {
+      const controller = new AbortController();
+      // 5-second timeout per fetch attempt
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
       try {
         if (retryCount > 0) {
           setStatusMessage("Waking up secure server...");
@@ -25,39 +37,57 @@ export default function SplashGate({ children }: SplashGateProps) {
           setStatusMessage("Preparing your experience...");
         }
 
-        // 1. Wake backend via lightweight ping
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-        const res = await fetch(`${apiUrl}/api/health`, {
-          method: "GET",
-          headers: { "Cache-Control": "no-cache" },
-        });
+        const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+        // Clean trailing slashes
+        const apiUrl = rawApiUrl.replace(/\/$/, "");
 
-        if (!res.ok) throw new Error("Server not responding");
+        // 1. Try waking backend with fallback route paths
+        let res: Response | null = null;
+        try {
+          res = await fetch(`${apiUrl}/health`, {
+            method: "GET",
+            headers: { "Cache-Control": "no-cache" },
+            signal: controller.signal,
+          });
+        } catch {
+          // Fallback to /api/health if /health fails
+          res = await fetch(`${apiUrl}/api/health`, {
+            method: "GET",
+            headers: { "Cache-Control": "no-cache" },
+            signal: controller.signal,
+          });
+        }
 
-        // 2. Preload static app configurations/cache here if needed
+        clearTimeout(timeoutId);
+
+        if (!res || !res.ok) {
+          throw new Error(`Server returned status: ${res?.status || "No Response"}`);
+        }
+
         setStatusMessage("Loading system config...");
-        await new Promise((resolve) => setTimeout(resolve, 400)); // Smooth UX transition delay
+        await new Promise((resolve) => setTimeout(resolve, 300)); // Smooth transition
 
         if (isMounted) {
+          clearTimeout(failSafeTimer);
           setIsReady(true);
         }
-      } catch (err) {
-        console.warn("Server cold start in progress, retrying...", err);
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        console.warn("Server connection attempt failed:", err.message);
 
-        // Update messaging if taking longer than expected
-        if (retryCount >= 2) {
+        if (retryCount >= 1) {
           setIsStuck(true);
           setStatusMessage("Server is taking a moment to spin up...");
         } else {
           setStatusMessage("Connecting to server...");
         }
 
-        // Retry automatically every 3 seconds
+        // Retry after 2.5 seconds
         timer = setTimeout(() => {
           if (isMounted) {
             setRetryCount((prev) => prev + 1);
           }
-        }, 3000);
+        }, 2500);
       }
     };
 
@@ -66,30 +96,26 @@ export default function SplashGate({ children }: SplashGateProps) {
     return () => {
       isMounted = false;
       if (timer) clearTimeout(timer);
+      if (failSafeTimer) clearTimeout(failSafeTimer);
     };
   }, [retryCount]);
 
-  // Once server is awake, render the rest of the application
+  // Once server ping passes or fail-safe triggers, show app
   if (isReady) {
     return <>{children}</>;
   }
 
-  // Splash Screen View
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-between bg-neutral-900 text-white p-6 font-sans">
-      {/* Top Spacer */}
       <div className="w-full h-12" />
 
-      {/* Main Branding & Loading State */}
       <div className="flex flex-col items-center text-center max-w-xs space-y-6">
-        {/* Brand Name */}
         <div className="space-y-1">
           <h1 className="text-4xl font-black tracking-tight text-white">
             Aviorè<span className="text-emerald-500">Go</span>
           </h1>
         </div>
 
-        {/* Status Indicator */}
         <div className="flex flex-col items-center space-y-3 pt-4">
           <div className="relative flex items-center justify-center">
             <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
@@ -100,22 +126,19 @@ export default function SplashGate({ children }: SplashGateProps) {
           </p>
         </div>
 
-        {/* Manual Retry Button (Shown if cold start takes > 9 seconds) */}
         {isStuck && (
           <button
             onClick={() => {
-              setIsStuck(false);
-              setRetryCount((prev) => prev + 1);
+              setIsReady(true); // Allow direct bypass on manual click
             }}
             className="mt-4 flex items-center gap-2 px-4 py-2 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-full text-xs font-bold border border-neutral-700 transition-colors cursor-pointer"
           >
             <RefreshCw size={14} />
-            <span>Tap to Retry</span>
+            <span>Skip & Continue to App</span>
           </button>
         )}
       </div>
 
-      {/* Footer / Subtext */}
       <div className="pb-6 text-center">
         <p className="text-[11px] font-medium text-neutral-500">
           Securing connection to services
