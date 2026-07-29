@@ -44,7 +44,7 @@ export default function SplashGate({ children }: SplashGateProps) {
         // 1. Try waking backend with fallback route paths
         let res: Response | null = null;
         try {
-          res = await fetch(`${apiUrl}/health`, {
+          res = await fetch(`${apiUrl}/api/health`, {
             method: "GET",
             headers: { "Cache-Control": "no-cache" },
             signal: controller.signal,
