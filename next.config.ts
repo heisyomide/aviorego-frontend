@@ -9,10 +9,20 @@ const withPWA = withPWAInit({
   workboxOptions: {
     skipWaiting: true,
     clientsClaim: true,
-    // Add explicit runtime caching rules to bypass Service Worker caching on authenticated & dynamic pages
+    // Prevents Workbox from precaching Vercel system paths & manifest files
+    exclude: [
+      /\.map$/,
+      /^manifest.*\.json$/,
+      /^\.well-known\//,
+    ],
     runtimeCaching: [
       {
-        // 1. ALL Authenticated Dashboard Routes & APIs MUST BE NETWORK ONLY
+        // 1. Bypass Service Worker entirely for Vercel internal routes & standard well-known URLs
+        urlPattern: /^https?:\/\/[^\/]+\/\.well-known\/.*$/i,
+        handler: "NetworkOnly",
+      },
+      {
+        // 2. ALL Authenticated Dashboard Routes & APIs MUST BE NETWORK ONLY
         urlPattern: /^\/(dashboard|rider|admin|auth|api|\_next\/data)\/.*$/i,
         handler: "NetworkOnly",
         options: {
@@ -20,7 +30,7 @@ const withPWA = withPWAInit({
         },
       },
       {
-        // 2. Static Assets (Images, Fonts, CSS) - Cache First for performance
+        // 3. Static Assets (Images, Fonts, CSS) - Cache First for performance
         urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|css)$/i,
         handler: "CacheFirst",
         options: {
@@ -32,7 +42,7 @@ const withPWA = withPWAInit({
         },
       },
       {
-        // 3. Document / HTML Page Navigation - Network First with short timeout
+        // 4. Document / HTML Page Navigation - Network First with short timeout
         urlPattern: ({ request }) => request.mode === "navigate",
         handler: "NetworkFirst",
         options: {

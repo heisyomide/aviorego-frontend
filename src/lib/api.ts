@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 
 // Standardized API fallback port across the entire project
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
@@ -16,16 +16,16 @@ let isRedirecting = false;
 
 // 1. Request Interceptor: Attach Auth Bearer Token
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('aviore_token');
 
       if (token) {
-        // Modern Axios v1.x compliant header setting
-        if (config.headers?.set) {
+        // Safe, cross-version Axios header assignment
+        config.headers = config.headers || {};
+        if (typeof config.headers.set === 'function') {
           config.headers.set('Authorization', `Bearer ${token}`);
         } else {
-          config.headers = config.headers || {};
           config.headers['Authorization'] = `Bearer ${token}`;
         }
       }
@@ -55,7 +55,6 @@ api.interceptors.response.use(
           isRedirecting = true;
           console.warn('Session expired or unauthorized access. Redirecting to login...');
           
-          // Use window.location.assign or router dispatch to redirect
           window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
         }
       }
