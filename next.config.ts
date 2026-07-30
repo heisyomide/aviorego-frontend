@@ -9,27 +9,29 @@ const withPWA = withPWAInit({
   workboxOptions: {
     skipWaiting: true,
     clientsClaim: true,
-    // Stop Workbox from precaching build artifacts or Vercel system files
+    // Prevents Workbox from precaching Vercel system paths & manifest files
     exclude: [
       /\.map$/,
       /^manifest.*\.json$/,
-      /_next\/data\/.*\.json$/,
       /^\.well-known\//,
     ],
     runtimeCaching: [
-      // 1. Completely ignore Vercel system paths
       {
-        urlPattern: /\/\.well-known\/.*/i,
+        // 1. Bypass Service Worker entirely for Vercel internal routes & standard well-known URLs
+        urlPattern: /^https?:\/\/[^\/]+\/\.well-known\/.*$/i,
         handler: "NetworkOnly",
       },
-      // 2. Dynamic API requests - Network first with zero timeout issues
       {
-        urlPattern: /^https:\/\/aviore-go-backend\.onrender\.com\/.*$/i,
+        // 2. ALL Authenticated Dashboard Routes & APIs MUST BE NETWORK ONLY
+        urlPattern: /^\/(dashboard|rider|admin|auth|api|\_next\/data)\/.*$/i,
         handler: "NetworkOnly",
+        options: {
+          cacheName: "no-cache-dynamic-routes",
+        },
       },
-      // 3. Static Assets (Images, Fonts, CSS, JS)
       {
-        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|css|js)$/i,
+        // 3. Static Assets (Images, Fonts, CSS) - Cache First for performance
+        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|css)$/i,
         handler: "CacheFirst",
         options: {
           cacheName: "static-media-cache",
@@ -39,14 +41,13 @@ const withPWA = withPWAInit({
           },
         },
       },
-      // 4. Document / Page Navigation (Dashboard, Admin, etc.)
-      // ALWAYS use NetworkFirst for navigation so it falls back gracefully instead of crashing the site
       {
+        // 4. Document / HTML Page Navigation - Network First with short timeout
         urlPattern: ({ request }) => request.mode === "navigate",
         handler: "NetworkFirst",
         options: {
           cacheName: "page-navigations",
-          networkTimeoutSeconds: 3,
+          networkTimeoutSeconds: 4, // If network takes > 4s, fallback safely
         },
       },
     ],
