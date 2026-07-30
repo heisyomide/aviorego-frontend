@@ -25,7 +25,11 @@ export default function ConfirmEmailPage() {
 
     const verifyToken = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/auth/confirm-email?token=${token}`, {
+        // Dynamic Backend URL derived from environment variables
+        const API_BASE =
+          process.env.NEXT_PUBLIC_API_URL || 'https://aviore-go-backend.onrender.com';
+
+        const response = await fetch(`${API_BASE}/auth/confirm-email?token=${token}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -39,11 +43,11 @@ export default function ConfirmEmailPage() {
         const jwtToken = data.access_token || data.token || data.accessToken;
 
         if (jwtToken) {
-          // 1. 🟢 Store auth tokens matching your app-wide api.ts keys
+          // 1. Store auth tokens matching your app-wide api.ts keys
           localStorage.setItem('aviore_token', jwtToken);
           localStorage.setItem('access_token', jwtToken); // Legacy fallback
 
-          // 2. 🟢 Store user object matching aviore keys
+          // 2. Store user object matching aviore keys
           if (data.user) {
             localStorage.setItem('aviore_user', JSON.stringify(data.user));
             localStorage.setItem('user', JSON.stringify(data.user));
