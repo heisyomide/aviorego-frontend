@@ -29,12 +29,41 @@ export default function Navbar() {
     logout();
   };
 
-  // Helper to get initials dynamically from real user name
+  // 🟢 Helper to get clean display name with proper fallback
+  const getDisplayName = (user: User) => {
+    const firstName = user?.firstName?.trim();
+    const lastName = user?.lastName?.trim();
+
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    }
+    if (firstName) {
+      return firstName;
+    }
+    if (lastName) {
+      return lastName;
+    }
+    if (user?.email) {
+      return user.email.split("@")[0]; // e.g. "john" from john@gmail.com
+    }
+    return formatRoleLabel(user?.role) || "User";
+  };
+
+  // 🟢 Helper to get user initials dynamically
   const getUserInitials = (user: User) => {
-    const firstInitial = user.firstName ? user.firstName.charAt(0) : "";
-    const lastInitial = user.lastName ? user.lastName.charAt(0) : "";
-    const initials = `${firstInitial}${lastInitial}`.toUpperCase();
-    return initials || user.email?.charAt(0).toUpperCase() || "U";
+    const firstName = user?.firstName?.trim();
+    const lastName = user?.lastName?.trim();
+
+    if (firstName && lastName) {
+      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+    }
+    if (firstName) {
+      return firstName.charAt(0).toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return "U";
   };
 
   // Helper to render role-specific badge icon on avatar
@@ -98,7 +127,7 @@ export default function Navbar() {
   };
 
   // Helper to format role name nicely for display
-  const formatRoleLabel = (role: User["role"]) => {
+  const formatRoleLabel = (role?: User["role"]) => {
     switch (role) {
       case "SUPER_ADMIN":
         return "Super Admin";
@@ -152,23 +181,26 @@ export default function Navbar() {
             <div className="relative">
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="flex items-center gap-2.5 p-1.5 pl-3 rounded-full border border-neutral-200 hover:border-neutral-300 transition-all bg-neutral-50/50 cursor-pointer"
+                className="flex items-center gap-3 py-1.5 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 transition-all bg-white cursor-pointer shadow-sm"
               >
-                <div className="flex flex-col text-right max-w-[130px]">
-                  <span className="text-xs font-bold text-neutral-800 leading-none truncate">
-                    {user.firstName} {user.lastName}
+                {/* Name and Role Stack */}
+                <div className="flex flex-col text-right">
+                  <span className="text-sm font-extrabold text-neutral-900 leading-tight">
+                    {getDisplayName(user)}
                   </span>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400 mt-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 leading-tight">
                     {formatRoleLabel(user.role)}
                   </span>
                 </div>
 
-                <div className="relative w-8 h-8 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-extrabold text-xs shrink-0">
+                {/* Circular Avatar with Badge */}
+                <div className="relative w-9 h-9 rounded-full bg-emerald-100/70 flex items-center justify-center text-emerald-900 font-extrabold text-xs shrink-0 ml-0.5">
                   <span>{getUserInitials(user)}</span>
                   {renderRoleBadge(user.role)}
                 </div>
 
-                <ChevronDown size={14} className="text-neutral-400 mr-1" />
+                {/* Chevron Dropdown Arrow */}
+                <ChevronDown size={15} className="text-neutral-400" />
               </button>
 
               {/* Dynamic Dropdown Card */}
@@ -179,7 +211,7 @@ export default function Navbar() {
                 >
                   <div className="px-4 py-2 border-b border-neutral-100">
                     <p className="font-bold text-neutral-900 truncate">
-                      {user.firstName} {user.lastName}
+                      {getDisplayName(user)}
                     </p>
                     <p className="text-[11px] text-neutral-400 truncate">{user.email}</p>
                   </div>
@@ -270,7 +302,7 @@ export default function Navbar() {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-sm text-neutral-900 leading-tight truncate">
-                  {user.firstName} {user.lastName}
+                  {getDisplayName(user)}
                 </span>
                 <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">
                   {formatRoleLabel(user.role)} Account

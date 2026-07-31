@@ -12,8 +12,8 @@ export interface User {
   id: string;
   email: string;
   firstName: string;
-  phone?: string;        
-  phoneNumber?: string;  
+  phone?: string;
+  phoneNumber?: string;
   lastName: string;
   role:
     | 'CUSTOMER'
@@ -23,6 +23,7 @@ export interface User {
     | 'SUPER_ADMIN';
 
   status: string;
+  avatarUrl?: string;
 }
 
 interface AuthContextType {
@@ -34,6 +35,8 @@ interface AuthContextType {
     token: string,
     user: User,
   ) => void;
+
+  updateUser: (user: Partial<User>) => void; // 🟢 Added to sync user state dynamically
 
   logout: () => void;
 }
@@ -70,9 +73,11 @@ export function AuthProvider({
     if (storedToken && storedUser) {
       setToken(storedToken);
 
-      setUser(
-        JSON.parse(storedUser),
-      );
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Failed to parse stored user:', e);
+      }
     }
 
     setLoading(false);
@@ -97,6 +102,18 @@ export function AuthProvider({
 
     setToken(token);
     setUser(user);
+  };
+
+  /**
+   * 🟢 Update active user data dynamically (e.g., post onboarding submission)
+   */
+  const updateUser = (partialUser: Partial<User>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      const updated = { ...prevUser, ...partialUser };
+      localStorage.setItem('aviore_user', JSON.stringify(updated));
+      return updated;
+    });
   };
 
   /**
@@ -125,6 +142,7 @@ export function AuthProvider({
         token,
         loading,
         login,
+        updateUser,
         logout,
       }}
     >
