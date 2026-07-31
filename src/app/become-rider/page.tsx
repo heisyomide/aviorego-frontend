@@ -15,7 +15,7 @@ import Step6CompliancePolicies from './components/step6';
 export default function RiderOnboardingWizard() {
   const router = useRouter();
 
-  // 🛡️ Security Guard States
+  // Security Guard States
   const [isVerifyingAuth, setIsVerifyingAuth] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [authError, setAuthError] = useState('');
@@ -24,9 +24,10 @@ export default function RiderOnboardingWizard() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [applicationId, setApplicationId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    // Section 1: Registration Core Identities & Personal Details
+    // Section 1: Personal Details
     email: '',
     phoneNumber: '',
     firstName: '',
@@ -58,13 +59,13 @@ export default function RiderOnboardingWizard() {
     vehicleYear: '',
     vehiclePhoto: '',
 
-    // Section 4: Extra Documents
+    // Section 4: Documents
     driversLicenseDoc: '',
     vehiclePaperDoc: '',
     insuranceDoc: '',
     roadWorthinessDoc: '',
 
-    // Section 5: Bank Information
+    // Section 5: Bank Details
     bankName: '',
     bankCode: '',
     accountNumber: '',
@@ -76,51 +77,74 @@ export default function RiderOnboardingWizard() {
     acceptedPrivacy: false,
   });
 
-  // 🛡️ Security Guard: Verifies Auth Token & Email Status
+  // Verify Auth Token & Initialize Draft Application
   useEffect(() => {
     let isMounted = true;
 
     const checkVerificationStatus = async () => {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('aviore_token') : null;
+      const token =
+        typeof window !== 'undefined'
+          ? localStorage.getItem('aviore_token') || localStorage.getItem('access_token')
+          : null;
 
-      // 1. If no token, kick to login immediately
       if (!token) {
         router.replace('/login');
         return;
       }
 
       try {
-        // 2. Fetch user profile from backend
-        const res = await api.get('/auth/me'); // Or '/users/profile' depending on your backend route
+        const res = await api.get('/auth/me');
         const user = res.data;
 
         if (!isMounted) return;
 
-        // Auto-fill user email into form state
-        if (user?.email) {
-          setFormData((p) => ({ ...p, email: user.email }));
-        }
+        // Auto-fill existing user info
+        const sanitizedPhone =
+          user?.phoneNumber && !user.phoneNumber.startsWith('PENDING_')
+            ? user.phoneNumber
+            : '';
 
-        // 3. 🚨 Email Verification Enforcement Check
+        setFormData((p) => ({
+          ...p,
+          email: user?.email || p.email || '',
+          firstName: user?.firstName || p.firstName || '',
+          lastName: user?.lastName || p.lastName || '',
+          phoneNumber: sanitizedPhone || p.phoneNumber || '',
+        }));
+
         const isVerified = user?.isEmailVerified === true || user?.status === 'VERIFIED';
 
         if (!isVerified) {
-          // Block access and redirect to email confirmation page
           router.replace('/confirm-email');
           return;
         }
 
-        // 4. Authorized: Grant access to UI
+        // Initialize draft application (Tries /start then /application as fallback)
+        try {
+          let appRes;
+          try {
+            appRes = await api.post('/rider-onboarding/start');
+          } catch {
+            appRes = await api.post('/rider-onboarding/application');
+          }
+
+          const appId = appRes.data?.applicationId || appRes.data?.id;
+          if (appId) {
+            setApplicationId(appId);
+          }
+        } catch (appErr) {
+          console.warn('[APPLICATION INIT WARNING]', appErr);
+        }
+
         setIsAuthorized(true);
       } catch (err: any) {
         console.error('[AUTH GUARD REJECTION]', err);
         if (isMounted) {
-          // If response status is explicitly 401 Unauthorized, token is expired/invalid
           if (err.response?.status === 401) {
             localStorage.removeItem('access_token');
+            localStorage.removeItem('aviore_token');
             router.replace('/login');
           } else {
-            // For network errors or server glitches, show alert rather than clearing token
             setAuthError('Unable to verify security clearance. Please check your connection.');
           }
         }
@@ -138,20 +162,31 @@ export default function RiderOnboardingWizard() {
     };
   }, [router]);
 
-  // Keep all your original functions (updateField, handleResolveBankAccount, handleBackendUpload, etc.)
   const updateField = (key: string, value: any) => {
     setFormData((p) => ({ ...p, [key]: value }));
   };
 
+  // Intermediate Step Sync Handlers
+  const handleSaveStep = async (stepNumber: number) => {
+    if (!applicationId) return;
+    try {
+      await api.post(`/rider-onboarding/step-${stepNumber}/${applicationId}`, formData);
+    } catch (err) {
+      console.warn(`[STEP ${stepNumber} SAVE WARNING]`, err);
+    }
+  };
+
+  const handleSaveStepOneApi = async (appId: string, data: any) => {
+    return api.post(`/rider-onboarding/step-1/${appId}`, data);
+  };
+
   const handleResolveBankAccount = async (accountNum: string, bankCode: string) => {
     if (accountNum.length === 10 && bankCode) {
-      try {
-        const res = await api.get(`/payments/resolve-bank?accountNumber=${accountNum}&bankCode=${bankCode}`);
-        if (res.data?.accountName) {
-          updateField('accountName', res.data.accountName);
-        }
-      } catch (err) {
-        throw err;
+      const res = await api.get(
+        `/payments/resolve-bank?accountNumber=${accountNum}&bankCode=${bankCode}`,
+      );
+      if (res.data?.accountName) {
+        updateField('accountName', res.data.accountName);
       }
     }
   };
@@ -168,15 +203,32 @@ export default function RiderOnboardingWizard() {
 
     let endpointUrl = '';
     switch (key) {
-      case 'idFrontImage': endpointUrl = '/uploads/rider/id-front'; break;
-      case 'idBackImage': endpointUrl = '/uploads/rider/id-back'; break;
-      case 'selfieImage': endpointUrl = '/uploads/rider/selfie'; break;
-      case 'vehiclePhoto': endpointUrl = '/uploads/rider/vehicle-photo'; break;
-      case 'driversLicenseDoc': endpointUrl = '/uploads/license'; break;
-      case 'vehiclePaperDoc': endpointUrl = '/uploads/rider/vehicle-paper'; break;
-      case 'insuranceDoc': endpointUrl = '/uploads/rider/insurance'; break;
-      case 'roadWorthinessDoc': endpointUrl = '/uploads/rider/road-worthiness'; break;
-      default: endpointUrl = '/uploads/rider/profile-photo';
+      case 'idFrontImage':
+        endpointUrl = '/uploads/rider/id-front';
+        break;
+      case 'idBackImage':
+        endpointUrl = '/uploads/rider/id-back';
+        break;
+      case 'selfieImage':
+        endpointUrl = '/uploads/rider/selfie';
+        break;
+      case 'vehiclePhoto':
+        endpointUrl = '/uploads/rider/vehicle-photo';
+        break;
+      case 'driversLicenseDoc':
+        endpointUrl = '/uploads/license';
+        break;
+      case 'vehiclePaperDoc':
+        endpointUrl = '/uploads/rider/vehicle-paper';
+        break;
+      case 'insuranceDoc':
+        endpointUrl = '/uploads/rider/insurance';
+        break;
+      case 'roadWorthinessDoc':
+        endpointUrl = '/uploads/rider/road-worthiness';
+        break;
+      default:
+        endpointUrl = '/uploads/rider/profile-photo';
     }
 
     try {
@@ -187,21 +239,23 @@ export default function RiderOnboardingWizard() {
       if (res.data?.url) {
         updateField(key, res.data.url);
       } else {
-        setError('Server authorized file storage successfully but returned an empty asset link.');
+        setError('Server stored file successfully but returned an empty asset link.');
       }
     } catch (err: any) {
-      console.error('--- Backend Binary Proxy Rejection ---', err);
+      console.error('--- Backend Upload Rejection ---', err);
       setError(
-        err.response?.data?.message || 
-        'Failed to upload asset through the backend proxy gateway.'
+        err.response?.data?.message ||
+          'Failed to upload asset through the backend proxy gateway.',
       );
     } finally {
       setUploading(false);
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     setError('');
+    // Sync active step state before proceeding
+    await handleSaveStep(step);
     setStep((s) => s + 1);
   };
 
@@ -223,21 +277,28 @@ export default function RiderOnboardingWizard() {
       ...formData,
       idType: formData.idType === 'NATIONAL_ID' ? 'NIN' : formData.idType,
       vehicleType: formData.vehicleType === 'BIKE' ? 'MOTORCYCLE' : formData.vehicleType,
+      localGovernment: formData.lga || (formData as any).localGovernment,
+      emergencyRelationship: formData.emergencyContactRelationship,
+      acceptedDeliveryPolicy: formData.acceptedPrivacy,
     };
 
-    delete (whitelistedPayload as any).emergencyRelationship;
-
     try {
-      await api.post('/rider/onboarding/submit', whitelistedPayload);
+      // Endpoint fallback handling matching both submit routes
+      const endpoint = applicationId
+        ? `/rider-onboarding/submit/${applicationId}`
+        : '/rider-onboarding/submit';
+
+      await api.post(endpoint, whitelistedPayload);
       router.replace('/become-rider/thank-you');
     } catch (err: any) {
-      console.error("Submission API Error:", err.response?.data);
+      console.error('Submission API Error:', err.response?.data || err);
+
       const backendMessage = err.response?.data?.message;
-      setError(
-        Array.isArray(backendMessage) 
-          ? backendMessage.join(', ') 
-          : 'Submission error. Please verify field items.'
-      );
+      const displayMsg = Array.isArray(backendMessage)
+        ? backendMessage.join(', ')
+        : backendMessage || 'Submission error. Please verify field items and try again.';
+
+      setError(displayMsg);
     } finally {
       setSubmitting(false);
     }
@@ -249,10 +310,9 @@ export default function RiderOnboardingWizard() {
     'Vehicle Setup',
     'Legal Records',
     'Financial Parameters',
-    'Final Agreements'
+    'Final Agreements',
   ];
 
-  // 1. Loading State Screen
   if (isVerifyingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 font-sans select-none">
@@ -264,7 +324,6 @@ export default function RiderOnboardingWizard() {
     );
   }
 
-  // 2. Authorization Error Screen
   if (authError) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 font-sans">
@@ -282,100 +341,95 @@ export default function RiderOnboardingWizard() {
     );
   }
 
-  // 3. Block UI if not authorized
   if (!isAuthorized) {
     return null;
   }
 
-  // 4. Render Onboarding Form Wizard
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 font-sans select-none">
       <div className="w-full max-w-xl bg-white rounded-3xl border border-zinc-200 p-8 shadow-sm space-y-6">
-        
-        {/* Dynamic Shared Header Title Grid */}
         <div className="flex items-center justify-between border-b border-zinc-100 pb-5">
           <div className="space-y-0.5">
             <h2 className="text-xl font-bold text-zinc-900 tracking-tight">Rider Profile</h2>
             <p className="text-xs text-zinc-400 font-medium">
-              Section {step} of 6 — <span className="text-zinc-600 font-semibold">{stepTitles[step - 1]}</span>
+              Section {step} of 6 —{' '}
+              <span className="text-zinc-600 font-semibold">{stepTitles[step - 1]}</span>
             </p>
           </div>
-          {/* Timeline Linear Progress Indicators */}
           <div className="flex gap-1.5">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 className={`h-1 w-4 rounded-full transition-all duration-300 ${
                   i <= step ? 'bg-emerald-700' : 'bg-zinc-100'
-                }`} 
+                }`}
               />
             ))}
           </div>
         </div>
 
-        {/* Global Pipeline Notification Bar */}
         {error && (
           <div className="rounded-xl bg-red-50 border border-red-200 p-3 text-xs text-red-600 text-center font-semibold tracking-wide">
             {error}
           </div>
         )}
 
-        {/* Multi-Step Component Injection Portal Router */}
         {step === 1 && (
-          <Step1PersonalDetails 
-            formData={formData} 
-            updateField={updateField} 
-            onNext={handleNext} 
+          <Step1PersonalDetails
+            formData={formData}
+            updateField={updateField}
+            onNext={handleNext}
+            applicationId={applicationId}
+            saveStepOneApi={handleSaveStepOneApi}
           />
         )}
         {step === 2 && (
-          <Step2IdentityVerification 
-            formData={formData} 
-            updateField={updateField} 
-            onUpload={handleBackendUpload} 
-            onNext={handleNext} 
-            onBack={handleBack} 
-            uploading={uploading} 
+          <Step2IdentityVerification
+            formData={formData}
+            updateField={updateField}
+            onUpload={handleBackendUpload}
+            onNext={handleNext}
+            onBack={handleBack}
+            uploading={uploading}
           />
         )}
         {step === 3 && (
-          <Step3VehicleInformation 
-            formData={formData} 
-            updateField={updateField} 
-            onUpload={handleBackendUpload} 
-            onNext={handleNext} 
-            onBack={handleBack} 
-            uploading={uploading} 
+          <Step3VehicleInformation
+            formData={formData}
+            updateField={updateField}
+            onUpload={handleBackendUpload}
+            onNext={handleNext}
+            onBack={handleBack}
+            uploading={uploading}
           />
         )}
         {step === 4 && (
-          <Step4DocumentsUpload 
-            formData={formData} 
-            onUpload={handleBackendUpload} 
-            onNext={handleNext} 
-            onBack={handleBack} 
-            uploading={uploading} 
+          <Step4DocumentsUpload
+            formData={formData}
+            onUpload={handleBackendUpload}
+            onNext={handleNext}
+            onBack={handleBack}
+            uploading={uploading}
           />
         )}
         {step === 5 && (
-          <Step5FinancialSettlement 
-            formData={formData} 
-            updateField={updateField} 
-            onResolveBank={handleResolveBankAccount} 
-            onNext={handleNext} 
-            onBack={handleBack} 
+          <Step5FinancialSettlement
+            formData={formData}
+            updateField={updateField}
+            onResolveBank={handleResolveBankAccount}
+            onNext={handleNext}
+            onBack={handleBack}
           />
         )}
         {step === 6 && (
-          <Step6CompliancePolicies 
-            formData={formData} 
-            updateField={updateField} 
-            onSubmit={handleFinalSubmission} 
-            onBack={handleBack} 
-            submitting={submitting} 
+          <Step6CompliancePolicies
+            formData={formData}
+            updateField={updateField}
+            onSubmit={handleFinalSubmission}
+            onBack={handleBack}
+            submitting={submitting}
           />
         )}
-
       </div>
     </div>
   );

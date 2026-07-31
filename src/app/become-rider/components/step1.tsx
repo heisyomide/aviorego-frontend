@@ -1,22 +1,99 @@
 'use client';
 
-import React from 'react';
-import { User, Calendar, MapPin, ShieldAlert, Mail, Phone } from 'lucide-react';
+import React, { useState } from 'react';
+import { User, Calendar, MapPin, ShieldAlert, Mail, Phone, Loader2 } from 'lucide-react';
 
 interface Step1Props {
   formData: any;
   updateField: (key: string, value: any) => void;
   onNext: () => void;
+  applicationId?: string | null;
+  saveStepOneApi?: (appId: string, data: any) => Promise<any>;
 }
 
-export default function Step1PersonalDetails({ formData, updateField, onNext }: Step1Props) {
-  const handleSubmit = (e: React.FormEvent) => {
+export default function Step1PersonalDetails({ 
+  formData, 
+  updateField, 
+  onNext,
+  applicationId,
+  saveStepOneApi
+}: Step1Props) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | string[] | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    // Sanitize phone number to digits only (retaining leading + if present)
+    const rawPhone = formData.phoneNumber ? String(formData.phoneNumber).trim() : '';
+    const cleanPhone = rawPhone.startsWith('+') 
+      ? '+' + rawPhone.slice(1).replace(/\D/g, '')
+      : rawPhone.replace(/\D/g, '');
+
+    // Validate phone number isn't placeholder
+    if (!cleanPhone || cleanPhone.includes('PENDING') || cleanPhone.length < 10) {
+      setError('Please provide a valid phone number (10 to 15 digits).');
+      return;
+    }
+
+    // Call Step 1 Saver if API function and Application ID exist
+    if (applicationId && saveStepOneApi) {
+      try {
+        setLoading(true);
+
+        // Build payload matching backend expectations
+        const payload: Record<string, any> = {
+          firstName: formData.firstName?.trim(),
+          lastName: formData.lastName?.trim(),
+          phoneNumber: cleanPhone,
+          email: formData.email?.trim(),
+        };
+
+        // Pass optional fields only when they contain non-empty values
+        if (formData.middleName?.trim()) payload.middleName = formData.middleName.trim();
+        if (formData.residentialAddress || formData.address) payload.address = (formData.residentialAddress || formData.address).trim();
+        if (formData.residentialAddress) payload.residentialAddress = formData.residentialAddress.trim();
+        if (formData.state?.trim()) payload.state = formData.state.trim();
+        if (formData.city?.trim()) payload.city = formData.city.trim();
+        if (formData.lga || formData.localGovernment) payload.localGovernment = (formData.lga || formData.localGovernment).trim();
+        if (formData.emergencyContactName?.trim()) payload.emergencyContactName = formData.emergencyContactName.trim();
+        if (formData.emergencyContactPhone?.trim()) payload.emergencyContactPhone = formData.emergencyContactPhone.trim();
+        if (formData.emergencyContactRelationship || formData.emergencyRelationship) {
+          payload.emergencyRelationship = (formData.emergencyContactRelationship || formData.emergencyRelationship).trim();
+        }
+        if (formData.referralCode?.trim()) payload.referralCode = formData.referralCode.trim();
+
+        // Include password parameters if required by your CreateStep1Dto
+        if (formData.password) {
+          payload.password = formData.password;
+          payload.confirmPassword = formData.confirmPassword || formData.password;
+        }
+
+        await saveStepOneApi(applicationId, payload);
+      } catch (err: any) {
+        console.error('Failed to save step 1 details:', err);
+
+        const backendMessage = err?.response?.data?.message;
+        setError(backendMessage || 'Failed to save step 1 details. Please check all fields.');
+        setLoading(false);
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+
     onNext();
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-xl font-medium">
+          {Array.isArray(error) ? error.join(', ') : error}
+        </div>
+      )}
+
       {/* Name Input Grid Matrix */}
       <div className="grid grid-cols-3 gap-3">
         {/* First Name */}
@@ -76,18 +153,18 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             <input 
               type="date" 
               required 
-              value={formData.dateOfBirth} 
+              value={formData.dateOfBirth || ''} 
               onChange={e => updateField('dateOfBirth', e.target.value)} 
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition" 
             />
           </div>
         </div>
 
-        {/* Gender Select Grid Option */}
+        {/* Gender Select */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Gender</label>
           <select 
-            value={formData.gender} 
+            value={formData.gender || 'MALE'} 
             onChange={e => updateField('gender', e.target.value)} 
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition"
           >
@@ -97,9 +174,8 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
         </div>
       </div>
 
-      {/* 🌟 NEW: Core Identity Pipeline Section (Email & Phone Number) */}
+      {/* Email & Phone */}
       <div className="grid grid-cols-2 gap-3">
-        {/* Email Address */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Email Address</label>
           <div className="relative">
@@ -115,7 +191,6 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
           </div>
         </div>
 
-        {/* Phone Number */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Phone Number</label>
           <div className="relative">
@@ -123,7 +198,7 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             <input 
               type="tel" 
               required 
-              placeholder="e.g. +2348012345678"
+              placeholder="e.g. 08012345678"
               value={formData.phoneNumber || ''} 
               onChange={e => updateField('phoneNumber', e.target.value)} 
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition" 
@@ -132,7 +207,7 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
         </div>
       </div>
 
-      {/* Residential Street Address */}
+      {/* Residential Address */}
       <div className="space-y-1.5">
         <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Residential Address</label>
         <div className="relative">
@@ -141,14 +216,14 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             type="text" 
             required 
             placeholder="House Number, Street Name, Landmark"
-            value={formData.residentialAddress} 
+            value={formData.residentialAddress || ''} 
             onChange={e => updateField('residentialAddress', e.target.value)} 
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition" 
           />
         </div>
       </div>
 
-      {/* Geolocation Region Split Info */}
+      {/* State, City, LGA */}
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">State</label>
@@ -156,7 +231,7 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             type="text" 
             required 
             placeholder="Lagos"
-            value={formData.state} 
+            value={formData.state || ''} 
             onChange={e => updateField('state', e.target.value)} 
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition" 
           />
@@ -167,7 +242,7 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             type="text" 
             required 
             placeholder="Ikeja"
-            value={formData.city} 
+            value={formData.city || ''} 
             onChange={e => updateField('city', e.target.value)} 
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition" 
           />
@@ -178,14 +253,14 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             type="text" 
             required 
             placeholder="Ikeja"
-            value={formData.lga} 
+            value={formData.lga || ''} 
             onChange={e => updateField('lga', e.target.value)} 
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition" 
           />
         </div>
       </div>
 
-      {/* Emergency Anchor Contact Module Frame */}
+      {/* Emergency Contact */}
       <div className="border-t border-zinc-100 pt-4 space-y-3">
         <div className="flex items-center gap-2 text-zinc-800">
           <ShieldAlert className="h-4 w-4 text-emerald-700" />
@@ -196,7 +271,7 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             type="text" 
             required 
             placeholder="Full Name" 
-            value={formData.emergencyContactName} 
+            value={formData.emergencyContactName || ''} 
             onChange={e => updateField('emergencyContactName', e.target.value)} 
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-xs text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition" 
           />
@@ -204,7 +279,7 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             type="tel" 
             required 
             placeholder="Phone Line" 
-            value={formData.emergencyContactPhone} 
+            value={formData.emergencyContactPhone || ''} 
             onChange={e => updateField('emergencyContactPhone', e.target.value)} 
             className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-xs text-zinc-900 outline-none focus:border-emerald-600 focus:bg-white transition" 
           />
@@ -212,9 +287,8 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
             type="text" 
             required 
             placeholder="e.g. Brother" 
-            value={formData.emergencyContactRelationship} 
+            value={formData.emergencyContactRelationship || ''} 
             onChange={e => {
-              // 🌟 Syncs both keys so the backend logic remains perfectly unbroken!
               updateField('emergencyContactRelationship', e.target.value);
               updateField('emergencyRelationship', e.target.value);
             }} 
@@ -225,9 +299,10 @@ export default function Step1PersonalDetails({ formData, updateField, onNext }: 
 
       <button 
         type="submit" 
-        className="w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold py-3.5 text-sm transition shadow-sm tracking-wide mt-2"
+        disabled={loading}
+        className="w-full rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold py-3.5 text-sm transition shadow-sm tracking-wide mt-2 flex items-center justify-center gap-2"
       >
-        Continue
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Continue'}
       </button>
     </form>
   );
