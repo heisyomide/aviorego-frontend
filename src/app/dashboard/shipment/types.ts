@@ -165,7 +165,7 @@ export interface Shipment {
   id: string;
   trackingCode: string;
   status: ShipmentStatus;
-
+  customerId?: string;
   // Pickup Metadata
   pickupAddress: string;
   pickupLandmark?: string | null;

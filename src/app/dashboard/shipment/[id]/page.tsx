@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/src/context/AuthContext";
 import { socket } from "@/src/lib/socket";
 import { ShipmentService } from "../services/shipments.service";
+import { MessageSquare } from "lucide-react";
 
 import ShipmentDetailsHeader from "../components/ShipmentDetailsHeader";
 import ShipmentTracking from "../components/ShipmentTracking";
@@ -26,6 +27,7 @@ interface TrackingShipment extends Omit<Shipment, "rider"> {
 
 export default function ShipmentPage() {
   const params = useParams();
+  const router = useRouter();
   const { token } = useAuth();
   const shipmentId = params.id as string;
 
@@ -123,8 +125,13 @@ export default function ShipmentPage() {
 
   const isDelivered = shipment.status === "DELIVERED";
 
+  // Function to handle navigating to the dedicated chat page
+  const handleOpenChatPage = () => {
+    router.push(`/dashboard/shipment/${shipmentId}/chat`);
+  };
+
   return (
-    <div className="space-y-6 max-w-7xl mx-auto px-4 py-2">
+    <div className="relative space-y-6 max-w-7xl mx-auto px-4 py-2">
       <ShipmentDetailsHeader trackingCode={shipment.trackingCode} status={shipment.status} />
 
       {/* VERIFICATION PIN & DELIVERY STATUS CARD */}
@@ -158,6 +165,16 @@ export default function ShipmentPage() {
       <ShipmentTracking shipment={shipment} liveLocation={liveLocation} />
       <ShipmentDetails shipment={shipment as unknown as Shipment} />
       <ShipmentTimeline timeline={shipment.timelineEvents} />
+
+      {/* FLOATING ACTION BUTTON - REDIRECT TO CHAT PAGE */}
+      <button
+        onClick={handleOpenChatPage}
+        className="fixed bottom-6 right-6 z-40 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white p-4 rounded-full shadow-2xl flex items-center gap-2 transition-all duration-200 hover:scale-105"
+        aria-label="Open Chat Page"
+      >
+        <MessageSquare className="w-6 h-6" />
+        <span className="font-semibold text-xs hidden sm:inline">Open Chat</span>
+      </button>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { LifeBuoy, ChevronRight } from 'lucide-react';
 
 import profileService from './services/profileService';
-
 import { RiderProfile } from './types';
 
 import ProfileSkeleton from './components/ProfileSkeleton';
@@ -17,25 +18,15 @@ import EditProfileModal from './components/EditProfileModal';
 import EditBankModal from './components/EditBankModal';
 
 export default function RiderProfilePage() {
-  const [profile, setProfile] =
-    useState<RiderProfile | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [profileModalOpen, setProfileModalOpen] =
-    useState(false);
-
-  const [bankModalOpen, setBankModalOpen] =
-    useState(false);
+  const [profile, setProfile] = useState<RiderProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [bankModalOpen, setBankModalOpen] = useState(false);
 
   async function loadProfile() {
     try {
       setLoading(true);
-
-      const data =
-        await profileService.getProfile();
-
+      const data = await profileService.getProfile();
       setProfile(data);
     } catch (error) {
       console.error(error);
@@ -58,7 +49,6 @@ export default function RiderProfilePage() {
         <h2 className="text-xl font-bold text-red-400">
           Unable to load profile.
         </h2>
-
         <button
           onClick={loadProfile}
           className="mt-5 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white"
@@ -72,58 +62,71 @@ export default function RiderProfilePage() {
   return (
     <>
       <div className="mx-auto max-w-7xl space-y-6">
-
         <ProfileHeader
           profile={profile}
           onEdit={() => setProfileModalOpen(true)}
         />
 
-        <ProfileStats
-          profile={profile}
-        />
+        <ProfileStats profile={profile} />
 
         <ProfileInformation
           profile={profile}
-          onEdit={() =>
-            setProfileModalOpen(true)
-          }
+          onEdit={() => setProfileModalOpen(true)}
         />
 
-        <IdentityInformation
-          profile={profile}
-        />
+        <IdentityInformation profile={profile} />
 
         <BankInformation
           profile={profile}
-          onEdit={() =>
-            setBankModalOpen(true)
-          }
+          onEdit={() => setBankModalOpen(true)}
         />
 
+        {/* --- SUPPORT & TICKETS LINK --- */}
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <LifeBuoy className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Help & Admin Support</h3>
+                <p className="text-sm text-neutral-400">
+                  Submit disputes, request payout help, or report account issues directly to management.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/rider/dashboard/supports"
+              className="inline-flex items-center space-x-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-emerald-500"
+            >
+              <span>Open Support Desk</span>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
       </div>
 
-<EditProfileModal
-  open={profileModalOpen}
-  profile={profile}
-  onClose={() => setProfileModalOpen(false)}
-  onSave={async (payload) => {
-    await profileService.updateProfile(payload);
+      <EditProfileModal
+        open={profileModalOpen}
+        profile={profile}
+        onClose={() => setProfileModalOpen(false)}
+        onSave={async (payload) => {
+          await profileService.updateProfile(payload);
+          setProfileModalOpen(false);
+          await loadProfile();
+        }}
+      />
 
-    setProfileModalOpen(false);
-
-    await loadProfile();
-  }}
-/>
-
-<EditBankModal
-  open={bankModalOpen}
-  profile={profile}
-  onClose={() => setBankModalOpen(false)}
-  onSuccess={() => {
-    setBankModalOpen(false);
-    loadProfile();
-  }}
-/>
+      <EditBankModal
+        open={bankModalOpen}
+        profile={profile}
+        onClose={() => setBankModalOpen(false)}
+        onSuccess={() => {
+          setBankModalOpen(false);
+          loadProfile();
+        }}
+      />
     </>
   );
 }
