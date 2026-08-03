@@ -1,36 +1,51 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { RefreshCw, Sparkles } from "lucide-react";
-import { api } from "../lib/api";
+import React, { useState, useEffect } from 'react';
+import { api } from '../lib/api';
+import { RefreshCw, Sparkles, ShieldAlert } from 'lucide-react';
 
-export default function AppUpdateBanner() {
-  const [updateAvailable, setUpdateAvailable] = useState(false);
+export default function UpdateBanner() {
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    const checkVersion = async () => {
+    // 1. Check version via API endpoint on load
+    const checkServerVersion = async () => {
       try {
-        const res = await api.get("/api/health/version");
+        const res = await api.get('/api/health/version');
         const currentVersion = res.data.version;
-        const savedVersion = localStorage.getItem("aviore_app_version");
+        const savedVersion = localStorage.getItem('aviore_app_version');
 
         if (savedVersion && savedVersion !== currentVersion) {
-          setUpdateAvailable(true);
+          setShowUpdateModal(true);
         } else if (!savedVersion) {
-          localStorage.setItem("aviore_app_version", currentVersion);
+          localStorage.setItem('aviore_app_version', currentVersion);
         }
       } catch (err) {
-        // Ignore network errors during background check
+        // Ignore network errors
       }
     };
 
-    checkVersion();
-    const interval = setInterval(checkVersion, 10 * 60 * 1000);
-    return () => clearInterval(interval);
+    checkServerVersion();
+
+    // 2. Keep Service Worker listener as a fallback if registered
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setShowUpdateModal(true);
+              }
+            });
+          }
+        });
+      });
+    }
   }, []);
 
-  const handleUpdate = async () => {
+  const handleReload = async () => {
     setIsUpdating(true);
     try {
       if ("serviceWorker" in navigator) {
@@ -45,33 +60,47 @@ export default function AppUpdateBanner() {
         await Promise.all(cacheNames.map((name) => caches.delete(name)));
       }
 
-      // 🟢 Fixed to use the exact same working endpoint path
-      const res = await api.get("/api/health/version");
-      localStorage.setItem("aviore_app_version", res.data.version);
-
-      window.location.reload();
-    } catch (err) {
-      console.error("Failed to update app cache:", err);
-      window.location.reload();
+      const res = await api.get('/api/health/version');
+      localStorage.setItem('aviore_app_version', res.data.version);
+    } catch (e) {
+      // fallback
     }
+    window.location.reload();
   };
 
-  if (!updateAvailable) return null;
+  if (!showUpdateModal) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-emerald-900 text-white px-4 py-3 shadow-lg flex items-center justify-between transition-all animate-slide-down">
-      <div className="flex items-center gap-2 text-sm font-medium">
-        <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
-        <span>A new version of Aviorè Go is available with performance improvements!</span>
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 backdrop-blur-xl p-4 animate-in fade-in duration-300">
+      <div className="relative w-full max-w-md bg-[#0a0a0a] border border-zinc-800 rounded-2xl p-6 shadow-2xl text-center flex flex-col items-center">
+        
+        {/* Glowing visual indicator */}
+        <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-4 text-emerald-400">
+          <Sparkles className="w-6 h-6 animate-pulse" />
+        </div>
+
+        <h3 className="text-white text-lg font-bold tracking-tight mb-1 font-mono">
+          System Update Required
+        </h3>
+        
+        <p className="text-zinc-400 text-xs leading-relaxed max-w-xs mb-6">
+          A new version of Aviorè has been deployed with performance improvements and critical updates. Please reload to continue.
+        </p>
+
+        <button 
+          onClick={handleReload}
+          disabled={isUpdating}
+          className="w-full flex items-center justify-center gap-2 bg-white text-black font-semibold text-xs py-3 rounded-xl hover:bg-zinc-200 transition-all duration-200 cursor-pointer disabled:opacity-50 font-mono tracking-wider uppercase shadow-lg shadow-white/5"
+        >
+          <RefreshCw className={`w-4 h-4 ${isUpdating ? "animate-spin" : ""}`} />
+          {isUpdating ? "Updating Workspace..." : "Update & Reload Now"}
+        </button>
+
+        <div className="mt-4 flex items-center gap-1.5 text-[10px] text-zinc-600 font-mono">
+          <ShieldAlert className="w-3 h-3" />
+          <span>Unsaved actions are safely persisted</span>
+        </div>
       </div>
-      <button
-        onClick={handleUpdate}
-        disabled={isUpdating}
-        className="flex items-center gap-1.5 bg-white text-emerald-900 px-3 py-1.5 rounded-md text-xs font-semibold hover:bg-emerald-50 transition-colors cursor-pointer disabled:opacity-50"
-      >
-        <RefreshCw className={`w-3.5 h-3.5 ${isUpdating ? "animate-spin" : ""}`} />
-        {isUpdating ? "Updating..." : "Update Now"}
-      </button>
     </div>
   );
 }
