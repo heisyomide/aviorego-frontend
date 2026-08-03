@@ -11,7 +11,8 @@ import ReactQueryProvider from "../providers/ReactQueryProvider";
 import { AuthProvider } from "../context/AuthContext";
 import SplashGate from "../components/SplashGate";
 import PushNotificationManager from "../components/PushNotificationManager";
-import RealtimeNotificationListener from "../components/RealtimeNotificationListener"; // <-- Added import
+import RealtimeNotificationListener from "../components/RealtimeNotificationListener"; 
+import AppUpdateBanner from "../components/AppUpdateBanner"; // <-- Added import
 
 export const viewport: Viewport = {
   themeColor: "#16a34a",
@@ -21,7 +22,7 @@ export const viewport: Viewport = {
 };
 
 // 🟢 Updated domain base URL
-const DOMAIN_URL = "https://aviorego.com.ng";
+const DOMAIN_URL = "https://www.aviorego.com.ng";
 
 export const metadata: Metadata = {
   metadataBase: new URL(DOMAIN_URL),
@@ -139,7 +140,8 @@ export default function RootLayout({
         <ReactQueryProvider>
           <AuthProvider>
             <SplashGate>
-              {/* 🟢 Push & Real-time Notification Managers */}
+              {/* 🟢 App Update & Notification Managers */}
+              <AppUpdateBanner />
               <PushNotificationManager />
               <RealtimeNotificationListener />
               {children}
