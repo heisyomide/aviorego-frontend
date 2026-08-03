@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
-import axios from "axios";
+import { api } from "../lib/api"; // Import your project's standardized API client
 
 // Helper function to convert base64 VAPID key
 function urlBase64ToUint8Array(base64String: string) {
@@ -34,6 +34,13 @@ export default function PushNotificationManager() {
 
   const syncPushTokenWithBackend = async (registration: ServiceWorkerRegistration) => {
     try {
+      // Check if user is actually logged in using the project's token key
+      const token = localStorage.getItem("aviore_token");
+      if (!token) {
+        console.warn("Push sync skipped: Authorization token not found");
+        return;
+      }
+
       let subscription = await registration.pushManager.getSubscription();
 
       if (!subscription) {
@@ -49,28 +56,8 @@ export default function PushNotificationManager() {
         });
       }
 
-      // Extract Auth JWT token
-      const token =
-        localStorage.getItem("token") ||
-        sessionStorage.getItem("token") ||
-        document.cookie.split("; ").find((row) => row.startsWith("token="))?.split("=")[1];
-
-      if (!token) {
-        console.warn("Push sync skipped: Authorization token not found");
-        return;
-      }
-
-      // Send Push Subscription to Backend
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/notifications/subscribe`,
-        subscription,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      // Use the project's api client (automatically injects 'aviore_token' as Bearer)
+      await api.post("/notifications/subscribe", subscription);
 
       console.log("Push subscription synchronized successfully");
     } catch (err) {
