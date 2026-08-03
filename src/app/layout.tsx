@@ -11,6 +11,7 @@ import ReactQueryProvider from "../providers/ReactQueryProvider";
 import { AuthProvider } from "../context/AuthContext";
 import SplashGate from "../components/SplashGate";
 import PushNotificationManager from "../components/PushNotificationManager";
+import RealtimeNotificationListener from "../components/RealtimeNotificationListener"; // <-- Added import
 
 export const viewport: Viewport = {
   themeColor: "#16a34a",
@@ -138,8 +139,9 @@ export default function RootLayout({
         <ReactQueryProvider>
           <AuthProvider>
             <SplashGate>
-              {/* 🟢 Push Notification Prompt Component */}
+              {/* 🟢 Push & Real-time Notification Managers */}
               <PushNotificationManager />
+              <RealtimeNotificationListener />
               {children}
             </SplashGate>
           </AuthProvider>
