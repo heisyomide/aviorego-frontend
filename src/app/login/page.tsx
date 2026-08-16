@@ -21,40 +21,41 @@ function LoginFormContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async (e: React.FormEvent) => {
+ const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      // 1. Authenticate with backend matching your NestJS DTO expectations 🌟
       const res = await api.post('/auth/login', {
-        email: identifier,         // 🌟 Map 'identifier' state to 'email' field
-        passwordRaw: password,     // 🌟 Map 'password' state to 'passwordRaw' field
+        email: identifier,
+        passwordRaw: password,
       });
 
-      const { user, access_token } = res.data; // Note: Destructure access_token matching your AuthService signature
+      const user = res.data.user;
+      const token = res.data.access_token || res.data.token;
 
-      // 🌟 FIX: Trigger global state login session so RoleGuards see the session values
-      if (access_token && user) {
-        login(access_token, user);
+      if (token && user) {
+        login(token, user);
       } else {
         throw new Error('Incomplete session payload returned from server.');
       }
       
-      // 2. Intelligent Routing based on Role & Status
+      // Intelligent Routing based on your exact role types
       if (user.role === 'CUSTOMER') {
         router.push('/dashboard');
       } else if (user.role === 'RIDER') {
         if (user.status === 'PENDING_VERIFICATION' || user.status === 'PENDING') {
           router.push('/rider/onboarding'); 
-        } else if (user.status === 'APPROVED' || user.status === 'VERIFIED') {
-          router.push('/rider/dashboard');
         } else {
-          router.push('/rider/dashboard'); // Fallback route
+          router.push('/rider/dashboard');
         }
-      } else if (user.role === 'ADMIN') {
+      } else if (user.role === 'ORGANIZER' || user.role === 'BUSINESS_OWNER') {
+        router.push('/events/dashboard');
+      } else if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
         router.push('/admin/dashboard');
+      } else {
+        router.push('/dashboard'); // Safe fallback
       }
       
     } catch (err: any) {
@@ -65,7 +66,6 @@ function LoginFormContent() {
       setLoading(false);
     }
   };
-
   return (
     <>
       {/* Titles */}

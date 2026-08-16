@@ -59,7 +59,7 @@ export default function ProfilePage() {
         <div className="space-y-6">
           <ProfileCard profile={profile} />
           
-          <LogoutCard />
+        
         </div>
 
         {/* Right Side */}
@@ -68,6 +68,33 @@ export default function ProfilePage() {
             profile={profile}
             onEdit={() => setEditOpen(true)}
           />
+         
+         {/* My Event Tickets Card */}
+          <div className="rounded-3xl border border-neutral-200 bg-white p-6 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-green-50 text-green-600">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v12.75c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" /></svg>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-neutral-900">
+                    My Event Tickets & Passes
+                  </h3>
+                  <p className="text-xs text-neutral-500">
+                    View your booked bus transit passes and boarding QR codes.
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/dashboard/profile/tickets"
+                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-xs font-bold text-white transition hover:bg-green-700"
+              >
+                <span>View Tickets</span>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
 
           <SecurityCard
             onChangePassword={() => setPasswordOpen(true)}
@@ -99,7 +126,10 @@ export default function ProfilePage() {
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
+            
           </div>
+
+          <LogoutCard />
         </div>
       </div>
 
@@ -110,5 +140,7 @@ export default function ProfilePage() {
         onSave={updateProfile}
       />
     </div>
+
+    
   );
 }

@@ -21,6 +21,7 @@ export default function AdminDashboardLayout({
     { name: 'Live Tracking', path: '/admin/tracking', icon: '📍' },
     { name: 'Customers', path: '/admin/customers', icon: '👥' },
     { name: 'Riders', path: '/admin/riders', icon: '🏍️' },
+{ name: 'Events Ops', path: '/admin/events', icon: '🎟️' },
     { name: 'Escrow/Finances', path: '/admin/finances', icon: '💰' },
     { name: 'Pricing Engine', path: '/admin/pricing', icon: '⚙️' },
     { name: 'Disputes', path: '/admin/disputes', icon: '⚖️' },

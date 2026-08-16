@@ -13,14 +13,71 @@ import {
   LayoutDashboard,
   ChevronDown,
   Settings,
+  Package,
 } from "lucide-react";
-import { useAuth, User } from "../../context/AuthContext"; // Adjust import path if needed
+import { useAuth, User } from "../../context/AuthContext";
+
+// --- Types & Constants ---
+const NAV_LINKS = [
+  { href: "/services", label: "Services" },
+  { href: "/coverage", label: "Coverage" },
+  { href: "/how-it-works", label: "How It Works" },
+  { href: "/track", label: "Track Shipment" },
+] as const;
+
+const ROLE_CONFIGS: Record<string, { bg: string; icon: React.ReactNode; title: string; dashboardPath: string; label: string }> = {
+  ADMIN: { bg: "bg-purple-600", icon: <ShieldCheck size={10} />, title: "Admin", dashboardPath: "/admin/dashboard", label: "Admin Portal" },
+  SUPER_ADMIN: { bg: "bg-purple-600", icon: <ShieldCheck size={10} />, title: "Super Admin", dashboardPath: "/admin/dashboard", label: "Admin Portal" },
+  RIDER: { bg: "bg-amber-500", icon: <Bike size={10} />, title: "Rider Partner", dashboardPath: "/rider/dashboard", label: "Rider Dashboard" },
+  BUSINESS_OWNER: { bg: "bg-blue-600", icon: <Building2 size={10} />, title: "Business Partner", dashboardPath: "/business/dashboard", label: "Merchant Dashboard" },
+  CUSTOMER: { bg: "bg-emerald-600", icon: <UserIcon size={10} />, title: "Customer", dashboardPath: "/dashboard", label: "Customer Dashboard" },
+};
+
+// --- Helper Functions ---
+function getDisplayName(currentUser: User): string {
+  const firstName = currentUser?.firstName?.trim();
+  const lastName = currentUser?.lastName?.trim();
+
+  if (firstName && lastName) return `${firstName} ${lastName}`;
+  if (firstName) return firstName;
+  if (lastName) return lastName;
+  if (currentUser?.email) return currentUser.email.split("@")[0];
+  return ROLE_CONFIGS[currentUser?.role]?.title || "User";
+}
+
+function getUserInitials(currentUser: User): string {
+  const firstName = currentUser?.firstName?.trim();
+  const lastName = currentUser?.lastName?.trim();
+
+  if (firstName && lastName) return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  if (firstName) return firstName.charAt(0).toUpperCase();
+  if (currentUser?.email) return currentUser.email.charAt(0).toUpperCase();
+  return "U";
+}
+
+// --- Sub-components ---
+function RoleBadge({ role }: { role: User["role"] }) {
+  const config = ROLE_CONFIGS[role] || ROLE_CONFIGS.CUSTOMER;
+  return (
+    <div className={`absolute -bottom-1 -right-1 ${config.bg} text-white p-0.5 rounded-full ring-2 ring-white`} title={config.title}>
+      {config.icon}
+    </div>
+  );
+}
+
+function UserAvatar({ user, sizeClass = "w-8 h-8 text-xs" }: { user: User; sizeClass?: string }) {
+  return (
+    <div className={`relative ${sizeClass} rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-900 font-extrabold shrink-0`}>
+      <span>{getUserInitials(user)}</span>
+      <RoleBadge role={user.role} />
+    </div>
+  );
+}
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  // Pull real auth state and actions from AuthContext
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
@@ -29,144 +86,26 @@ export default function Navbar() {
     logout();
   };
 
-  // 🟢 Helper to get clean display name with proper fallback
-  const getDisplayName = (user: User) => {
-    const firstName = user?.firstName?.trim();
-    const lastName = user?.lastName?.trim();
-
-    if (firstName && lastName) {
-      return `${firstName} ${lastName}`;
-    }
-    if (firstName) {
-      return firstName;
-    }
-    if (lastName) {
-      return lastName;
-    }
-    if (user?.email) {
-      return user.email.split("@")[0]; // e.g. "john" from john@gmail.com
-    }
-    return formatRoleLabel(user?.role) || "User";
-  };
-
-  // 🟢 Helper to get user initials dynamically
-  const getUserInitials = (user: User) => {
-    const firstName = user?.firstName?.trim();
-    const lastName = user?.lastName?.trim();
-
-    if (firstName && lastName) {
-      return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
-    }
-    if (firstName) {
-      return firstName.charAt(0).toUpperCase();
-    }
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase();
-    }
-    return "U";
-  };
-
-  // Helper to render role-specific badge icon on avatar
-  const renderRoleBadge = (role: User["role"]) => {
-    switch (role) {
-      case "ADMIN":
-      case "SUPER_ADMIN":
-        return (
-          <div
-            className="absolute -bottom-1 -right-1 bg-purple-600 text-white p-0.5 rounded-full ring-2 ring-white"
-            title="Admin"
-          >
-            <ShieldCheck size={10} />
-          </div>
-        );
-      case "RIDER":
-        return (
-          <div
-            className="absolute -bottom-1 -right-1 bg-amber-500 text-white p-0.5 rounded-full ring-2 ring-white"
-            title="Rider Partner"
-          >
-            <Bike size={10} />
-          </div>
-        );
-      case "BUSINESS_OWNER":
-        return (
-          <div
-            className="absolute -bottom-1 -right-1 bg-blue-600 text-white p-0.5 rounded-full ring-2 ring-white"
-            title="Business Partner"
-          >
-            <Building2 size={10} />
-          </div>
-        );
-      case "CUSTOMER":
-      default:
-        return (
-          <div
-            className="absolute -bottom-1 -right-1 bg-emerald-600 text-white p-0.5 rounded-full ring-2 ring-white"
-            title="Customer"
-          >
-            <UserIcon size={10} />
-          </div>
-        );
-    }
-  };
-
-  // Helper to route to the appropriate dashboard per role
-  const getDashboardPath = (role: User["role"]) => {
-    switch (role) {
-      case "ADMIN":
-      case "SUPER_ADMIN":
-        return "/admin/dashboard";
-      case "RIDER":
-        return "/rider/dashboard";
-      case "BUSINESS_OWNER":
-        return "/business/dashboard";
-      case "CUSTOMER":
-      default:
-        return "/dashboard";
-    }
-  };
-
-  // Helper to format role name nicely for display
-  const formatRoleLabel = (role?: User["role"]) => {
-    switch (role) {
-      case "SUPER_ADMIN":
-        return "Super Admin";
-      case "ADMIN":
-        return "Admin";
-      case "RIDER":
-        return "Rider";
-      case "BUSINESS_OWNER":
-        return "Business";
-      case "CUSTOMER":
-      default:
-        return "Customer";
-    }
-  };
+  const currentRoleConfig = ROLE_CONFIGS[user?.role || "CUSTOMER"] || ROLE_CONFIGS.CUSTOMER;
 
   return (
-    <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-neutral-200/80">
+    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-neutral-200/80 transition-all">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Brand Logo Text Only */}
-        <Link href="/" className="flex items-center">
+        
+        {/* Brand Logo */}
+        <Link href="/" className="flex items-center gap-1 group">
           <span className="font-black text-2xl tracking-tight text-neutral-900 leading-none">
-            Aviorè<span className="text-emerald-600">Go</span>
+            Aviorè<span className="text-emerald-600 group-hover:text-emerald-500 transition-colors">Go</span>
           </span>
         </Link>
 
         {/* Desktop Navigation Links */}
         <div className="hidden md:flex items-center gap-8 text-xs font-semibold text-neutral-600">
-          <Link href="/services" className="hover:text-emerald-600 transition-colors">
-            Services
-          </Link>
-          <Link href="/coverage" className="hover:text-emerald-600 transition-colors">
-            Coverage
-          </Link>
-          <Link href="/how-it-works" className="hover:text-emerald-600 transition-colors">
-            How It Works
-          </Link>
-          <Link href="/track" className="hover:text-emerald-600 transition-colors">
-            Track Shipment
-          </Link>
+          {NAV_LINKS.map((link) => (
+            <Link key={link.href} href={link.href} className="hover:text-emerald-600 transition-colors">
+              {link.label}
+            </Link>
+          ))}
           {!user && (
             <Link href="/apply" className="hover:text-emerald-600 transition-colors">
               Become a Rider
@@ -177,78 +116,60 @@ export default function Navbar() {
         {/* Desktop User Section */}
         <div className="hidden md:flex items-center gap-3">
           {user ? (
-            /* Logged In User Dropdown Menu */
             <div className="relative">
               <button
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="flex items-center gap-3 py-1.5 px-4 rounded-full border border-neutral-200 hover:border-neutral-300 transition-all bg-white cursor-pointer shadow-sm"
+                className="flex items-center gap-3 py-1.5 px-3.5 rounded-full border border-neutral-200 hover:border-neutral-300 transition-all bg-white cursor-pointer shadow-xs"
+                aria-expanded={userDropdownOpen}
               >
-                {/* Name and Role Stack */}
                 <div className="flex flex-col text-right">
-                  <span className="text-sm font-extrabold text-neutral-900 leading-tight">
+                  <span className="text-xs font-extrabold text-neutral-900 leading-tight">
                     {getDisplayName(user)}
                   </span>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 leading-tight">
-                    {formatRoleLabel(user.role)}
+                    {currentRoleConfig.title}
                   </span>
                 </div>
 
-                {/* Circular Avatar with Badge */}
-                <div className="relative w-9 h-9 rounded-full bg-emerald-100/70 flex items-center justify-center text-emerald-900 font-extrabold text-xs shrink-0 ml-0.5">
-                  <span>{getUserInitials(user)}</span>
-                  {renderRoleBadge(user.role)}
-                </div>
+                <UserAvatar user={user} sizeClass="w-8 h-8 text-xs" />
 
-                {/* Chevron Dropdown Arrow */}
-                <ChevronDown size={15} className="text-neutral-400" />
+                <ChevronDown size={14} className={`text-neutral-400 transition-transform duration-200 ${userDropdownOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {/* Dynamic Dropdown Card */}
               {userDropdownOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-neutral-100 py-2 z-50 text-xs font-medium space-y-1"
+                  className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-neutral-100 py-2 z-50 text-xs font-medium space-y-0.5 animate-in fade-in slide-in-from-top-2"
                   onMouseLeave={() => setUserDropdownOpen(false)}
                 >
-                  <div className="px-4 py-2 border-b border-neutral-100">
-                    <p className="font-bold text-neutral-900 truncate">
-                      {getDisplayName(user)}
-                    </p>
+                  <div className="px-4 py-2.5 border-b border-neutral-100">
+                    <p className="font-bold text-neutral-900 truncate">{getDisplayName(user)}</p>
                     <p className="text-[11px] text-neutral-400 truncate">{user.email}</p>
                   </div>
 
-                  {/* Role-Specific Dashboard Route */}
                   <Link
-                    href={getDashboardPath(user.role)}
+                    href={currentRoleConfig.dashboardPath}
                     onClick={() => setUserDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2 text-neutral-700 hover:bg-neutral-50 hover:text-emerald-600 transition-colors"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-neutral-700 hover:bg-neutral-50 hover:text-emerald-600 transition-colors"
                   >
-                    <LayoutDashboard size={16} />
-                    <span>
-                      {user.role === "ADMIN" || user.role === "SUPER_ADMIN"
-                        ? "Admin Portal"
-                        : user.role === "RIDER"
-                        ? "Rider Dashboard"
-                        : user.role === "BUSINESS_OWNER"
-                        ? "Merchant Dashboard"
-                        : "Customer Dashboard"}
-                    </span>
+                    <LayoutDashboard size={15} />
+                    <span>{currentRoleConfig.label}</span>
                   </Link>
 
                   <Link
                     href="/profile"
                     onClick={() => setUserDropdownOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2 text-neutral-700 hover:bg-neutral-50 hover:text-emerald-600 transition-colors"
+                    className="flex items-center gap-2.5 px-4 py-2.5 text-neutral-700 hover:bg-neutral-50 hover:text-emerald-600 transition-colors"
                   >
-                    <Settings size={16} />
+                    <Settings size={15} />
                     <span>Account Settings</span>
                   </Link>
 
-                  <div className="border-t border-neutral-100 pt-1">
+                  <div className="border-t border-neutral-100 pt-1 mt-1">
                     <button
                       onClick={handleLogout}
-                      className="w-full flex items-center gap-2.5 px-4 py-2 text-rose-600 hover:bg-rose-50 transition-colors text-left font-bold cursor-pointer"
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-rose-600 hover:bg-rose-50 transition-colors text-left font-bold cursor-pointer"
                     >
-                      <LogOut size={16} />
+                      <LogOut size={15} />
                       <span>Log Out</span>
                     </button>
                   </div>
@@ -256,8 +177,7 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            /* Logged Out Buttons */
-            <>
+            <div className="flex items-center gap-2">
               <Link
                 href="/login"
                 className="text-xs font-bold text-neutral-700 hover:text-emerald-600 px-4 py-2 transition-colors"
@@ -266,98 +186,79 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/shipments/create"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-md shadow-emerald-600/20 transition-all hover:scale-105"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-5 py-2.5 rounded-full shadow-md shadow-emerald-600/20 transition-all hover:scale-[1.02] flex items-center gap-1.5"
               >
-                Send Package
+                <Package size={14} />
+                <span>Send Package</span>
               </Link>
-            </>
+            </div>
           )}
         </div>
 
         {/* Mobile Toggle Button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden text-neutral-700 p-2 hover:bg-neutral-100 rounded-lg transition-colors flex items-center gap-2"
+          className="md:hidden text-neutral-700 p-2 hover:bg-neutral-100 rounded-xl transition-colors flex items-center gap-2 cursor-pointer"
           aria-label="Toggle navigation menu"
         >
-          {user && (
-            <div className="relative w-7 h-7 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-extrabold text-xs">
-              {getUserInitials(user)}
-              {renderRoleBadge(user.role)}
-            </div>
-          )}
+          {user && <UserAvatar user={user} sizeClass="w-7 h-7 text-[10px]" />}
           {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-white border-b border-neutral-200 px-4 pt-3 pb-6 space-y-3">
-          {/* Dynamic Mobile User Card */}
+        <div className="md:hidden bg-white border-b border-neutral-200 px-5 pt-4 pb-6 space-y-4 shadow-xl animate-in slide-in-from-top-4">
           {user && (
-            <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-2xl border border-neutral-100 mb-2">
-              <div className="relative w-10 h-10 rounded-full bg-emerald-100 border border-emerald-200 flex items-center justify-center text-emerald-800 font-extrabold text-sm shrink-0">
-                {getUserInitials(user)}
-                {renderRoleBadge(user.role)}
-              </div>
+            <div className="flex items-center gap-3 p-3.5 bg-neutral-50 rounded-2xl border border-neutral-100">
+              <UserAvatar user={user} sizeClass="w-10 h-10 text-sm" />
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-sm text-neutral-900 leading-tight truncate">
                   {getDisplayName(user)}
                 </span>
-                <span className="text-[11px] font-semibold text-emerald-600 uppercase tracking-wider">
-                  {formatRoleLabel(user.role)} Account
+                <span className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider">
+                  {currentRoleConfig.title} Account
                 </span>
               </div>
             </div>
           )}
 
-          {/* Nav Links */}
-          <Link
-            href="/services"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-neutral-700 py-1.5 hover:text-emerald-600"
-          >
-            Services
-          </Link>
-          <Link
-            href="/coverage"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-neutral-700 py-1.5 hover:text-emerald-600"
-          >
-            Coverage
-          </Link>
-          <Link
-            href="/how-it-works"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-neutral-700 py-1.5 hover:text-emerald-600"
-          >
-            How It Works
-          </Link>
-          <Link
-            href="/track"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-sm font-medium text-neutral-700 py-1.5 hover:text-emerald-600"
-          >
-            Track Shipment
-          </Link>
+          <div className="space-y-1 py-1">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-sm font-medium text-neutral-700 py-2 hover:text-emerald-600 transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+            {!user && (
+              <Link
+                href="/apply"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block text-sm font-medium text-neutral-700 py-2 hover:text-emerald-600 transition-colors"
+              >
+                Become a Rider
+              </Link>
+            )}
+          </div>
 
-          {/* Action CTAs for Mobile */}
-          <div className="pt-3 border-t border-neutral-100 flex flex-col gap-2">
+          <div className="pt-3 border-t border-neutral-100 flex flex-col gap-2.5">
             {user ? (
               <>
                 <Link
-                  href={getDashboardPath(user.role)}
+                  href={currentRoleConfig.dashboardPath}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 text-xs font-bold text-white bg-emerald-600 rounded-xl flex items-center justify-center gap-2"
+                  className="w-full text-center py-3 text-xs font-bold text-white bg-emerald-600 rounded-xl flex items-center justify-center gap-2 shadow-sm"
                 >
                   <LayoutDashboard size={16} />
-                  <span>
-                    Go to {formatRoleLabel(user.role)} Dashboard
-                  </span>
+                  <span>Go to {currentRoleConfig.title} Dashboard</span>
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-center py-2.5 text-xs font-bold text-rose-600 border border-rose-200 rounded-xl flex items-center justify-center gap-2 bg-rose-50/50 cursor-pointer"
+                  className="w-full text-center py-3 text-xs font-bold text-rose-600 border border-rose-200 rounded-xl flex items-center justify-center gap-2 bg-rose-50/50 cursor-pointer"
                 >
                   <LogOut size={16} />
                   <span>Log Out</span>
@@ -368,16 +269,17 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 text-xs font-bold text-neutral-700 border border-neutral-200 rounded-xl"
+                  className="w-full text-center py-3 text-xs font-bold text-neutral-700 border border-neutral-200 rounded-xl hover:bg-neutral-50 transition"
                 >
                   Log In
                 </Link>
                 <Link
                   href="/shipments/create"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2.5 text-xs font-bold text-white bg-emerald-600 rounded-xl"
+                  className="w-full text-center py-3 text-xs font-bold text-white bg-emerald-600 rounded-xl flex items-center justify-center gap-2 shadow-md shadow-emerald-600/20"
                 >
-                  Send Package
+                  <Package size={16} />
+                  <span>Send Package</span>
                 </Link>
               </>
             )}

@@ -3,6 +3,7 @@ import * as z from "zod";
 export enum UserRole {
   CUSTOMER = "CUSTOMER",
   RIDER = "RIDER"
+  
 }
 
 // 1. Shared Base Customer / Initial Personal Details

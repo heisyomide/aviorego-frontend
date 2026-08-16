@@ -45,12 +45,12 @@ export default function CustomerDashboardLayout({
         {children}
       </main>
 
-      {/* Persistent Sticky Bottom Tab Bar */}
+      {/* Persistent Sticky Bottom Tab Bar (5 Tabs) */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-neutral-200 px-4 py-2 z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] max-w-lg mx-auto sm:rounded-t-3xl sm:border-x">
         <div className="flex items-center justify-around">
           
           {/* Home */}
-          <Link href="/dashboard" className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${isActive('/dashboard') && !isActive('/dashboard/shipment') && !isActive('/dashboard/wallet') && !isActive('/dashboard/profile') ? 'text-green-600 font-black' : 'text-neutral-400 hover:text-neutral-900'}`}>
+          <Link href="/dashboard" className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${isActive('/dashboard') && !isActive('/dashboard/shipment') && !isActive('/dashboard/events') && !isActive('/dashboard/wallet') && !isActive('/dashboard/profile') ? 'text-green-600 font-black' : 'text-neutral-400 hover:text-neutral-900'}`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
             <span className="text-[10px] tracking-tight">Home</span>
           </Link>
@@ -59,6 +59,12 @@ export default function CustomerDashboardLayout({
           <Link href="/dashboard/shipment" className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${isActive('/dashboard/shipment') ? 'text-green-600 font-black' : 'text-neutral-400 hover:text-neutral-900'}`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
             <span className="text-[10px] tracking-tight">Shipment</span>
+          </Link>
+
+          {/* Events (New 5th Tab) */}
+          <Link href="/dashboard/events" className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${isActive('/dashboard/events') ? 'text-green-600 font-black' : 'text-neutral-400 hover:text-neutral-900'}`}>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v12.75c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" /></svg>
+            <span className="text-[10px] tracking-tight">Events</span>
           </Link>
 
           {/* Wallet */}
