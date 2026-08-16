@@ -21,12 +21,14 @@ export default function Step3VehicleInformation({ formData, updateField, onUploa
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        {/* Asset Type Categories */}
+        {/* Asset Type Categories (Synced with Prisma VehicleType enum) */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Vehicle Type</label>
           <select value={formData.vehicleType} onChange={e => updateField('vehicleType', e.target.value)} className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 transition">
-            <option value="BIKE">Bike (Dispatch Motorcycle)</option>
+            <option value="MOTORCYCLE">Motorcycle / Dispatch Bike</option>
+            <option value="BICYCLE">Bicycle</option>
             <option value="CAR">Car</option>
+            <option value="BUS">Bus</option>
             <option value="VAN">Van / Delivery Minivan</option>
             <option value="TRICYCLE">Tricycle (Keke)</option>
           </select>
@@ -44,13 +46,13 @@ export default function Step3VehicleInformation({ formData, updateField, onUploa
           <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Vehicle Brand</label>
           <div className="relative">
             <span className="absolute left-4 top-3.5 text-zinc-400"><Truck className="h-4 w-4" /></span>
-            <input type="text" required placeholder="e.g. Bajaj, Honda" value={formData.vehicleBrand} onChange={e => updateField('vehicleBrand', e.target.value)} className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 transition" />
+            <input type="text" required placeholder="e.g. Bajaj, Toyota" value={formData.vehicleBrand} onChange={e => updateField('vehicleBrand', e.target.value)} className="w-full rounded-xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 transition" />
           </div>
         </div>
         {/* Engine Model String */}
         <div className="space-y-1.5">
           <label className="block text-xs font-bold text-zinc-400 uppercase tracking-wider">Vehicle Model</label>
-          <input type="text" required placeholder="e.g. Pulsar 200" value={formData.vehicleModel} onChange={e => updateField('vehicleModel', e.target.value)} className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 transition" />
+          <input type="text" required placeholder="e.g. Pulsar 200, Hiace" value={formData.vehicleModel} onChange={e => updateField('vehicleModel', e.target.value)} className="w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-600 transition" />
         </div>
       </div>
 

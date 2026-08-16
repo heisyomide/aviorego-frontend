@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { eventsApi } from '@/src/lib/eventsApi';
 import EventPaymentSheet from '@/src/components/events/EventPaymentSheet';
+import { BellRing, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function CustomerEventsPage() {
   const [events, setEvents] = useState<any[]>([]);
@@ -15,6 +16,10 @@ export default function CustomerEventsPage() {
   // Sheet & payment states
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  
+  // Waitlist states
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistSuccess, setWaitlistSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
@@ -37,6 +42,30 @@ export default function CustomerEventsPage() {
     setIsPaymentSheetOpen(true);
   };
 
+  const handleJoinWaitlist = async () => {
+    if (!selectedEvent || !selectedRoute) {
+      alert('Please select an event and route to join the waitlist.');
+      return;
+    }
+
+    setWaitlistLoading(true);
+    try {
+      // Call your backend waitlist API method
+      await eventsApi.joinWaitlist({
+        eventId: selectedEvent.id,
+        routeId: selectedRoute.id,
+        pickupPointId: selectedPickup?.id || null,
+      });
+
+      setWaitlistSuccess(true);
+      setSuccessMessage('You have successfully joined the waitlist! We will notify you via email and SMS as soon as buses are scheduled.');
+    } catch (error: any) {
+      alert(error.response?.data?.message || error.message || 'Failed to join waitlist');
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
+
   const handleFlutterwaveCheckout = async () => {
     if (!selectedEvent || !selectedRoute || !selectedPickup || !selectedTrip) {
       alert('Please complete all selection steps including the trip schedule.');
@@ -47,7 +76,6 @@ export default function CustomerEventsPage() {
     setSuccessMessage('');
 
     try {
-      // 1. Create the pending event booking using the actual selected trip ID
       const booking = await eventsApi.bookTrip({
         eventId: selectedEvent.id,
         routeId: selectedRoute.id,
@@ -61,14 +89,12 @@ export default function CustomerEventsPage() {
         throw new Error('Booking ID was not returned from the server.');
       }
 
-      // 2. Initialize Flutterwave payment using the bookingId
       const paymentResponse = await eventsApi.initializePayment({
         bookingId: bookingId,
       });
 
       const paymentLink = paymentResponse?.link || paymentResponse?.data?.link;
       if (paymentLink) {
-        // Redirect user to Flutterwave gateway
         window.location.href = paymentLink;
       } else {
         throw new Error('Payment link could not be generated.');
@@ -84,6 +110,8 @@ export default function CustomerEventsPage() {
     setSelectedRoute(null);
     setSelectedPickup(null);
     setSelectedTrip(null);
+    setWaitlistSuccess(false);
+    setSuccessMessage('');
   };
 
   return (
@@ -93,7 +121,7 @@ export default function CustomerEventsPage() {
         <p className="text-sm text-neutral-500">Discover upcoming festivals, concerts, and secure your official transit bus seats.</p>
       </div>
 
-      {successMessage && (
+      {successMessage && !selectedEvent && (
         <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-2xl text-sm font-medium">
           {successMessage}
         </div>
@@ -126,14 +154,14 @@ export default function CustomerEventsPage() {
                 onClick={() => setSelectedEvent(event)}
                 className="w-full bg-neutral-950 hover:bg-green-600 text-white font-bold py-3 rounded-2xl text-xs transition-colors shadow-sm"
               >
-                Select Bus Route & Book
+                Select Bus Route & Book / Waitlist
               </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Booking Modal / Drawer */}
+      {/* Booking Modal / Drawer with Waitlist Capability */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-3xl p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -142,83 +170,123 @@ export default function CustomerEventsPage() {
               <button onClick={closeModal} className="text-neutral-400 hover:text-neutral-950 font-bold text-sm">✕</button>
             </div>
 
-            {/* Step 1: Select Route */}
-            <div className="space-y-3">
-              <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">1. Select Travel Route</label>
-              <div className="space-y-2">
-                {selectedEvent.routes?.map((route: any) => (
-                  <div
-                    key={route.id}
-                    onClick={() => { 
-                      setSelectedRoute(route); 
-                      setSelectedPickup(null); 
-                      setSelectedTrip(null); 
-                    }}
-                    className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${selectedRoute?.id === route.id ? 'border-green-600 bg-green-50/50' : 'border-neutral-200 hover:border-neutral-300'}`}
-                  >
-                    <div>
-                      <p className="text-xs font-bold text-neutral-950">{route.originCity} ➔ {route.destination}</p>
-                    </div>
-                    <span className="text-xs font-mono font-black text-green-600">₦{Number(route.price).toLocaleString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Step 2: Select Pickup Point */}
-            {selectedRoute && (
-              <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">2. Select Pickup Landmark</label>
-                <div className="space-y-2">
-                  {selectedRoute.pickupPoints?.map((pickup: any) => (
-                    <div
-                      key={pickup.id}
-                      onClick={() => setSelectedPickup(pickup)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all ${selectedPickup?.id === pickup.id ? 'border-green-600 bg-green-50/50' : 'border-neutral-200'}`}
-                    >
-                      <p className="text-xs font-bold text-neutral-950">{pickup.name}</p>
-                      <p className="text-[10px] text-neutral-500">{pickup.address}</p>
-                    </div>
-                  ))}
+            {waitlistSuccess ? (
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center space-y-4">
+                <div className="w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 size={24} />
                 </div>
+                <div className="space-y-1">
+                  <h3 className="font-bold text-neutral-950 text-base">You're on the Waitlist!</h3>
+                  <p className="text-xs text-neutral-600 leading-relaxed">{successMessage}</p>
+                </div>
+                <button
+                  onClick={closeModal}
+                  className="w-full bg-neutral-900 text-white font-bold py-3 rounded-xl text-xs hover:bg-neutral-800"
+                >
+                  Close Window
+                </button>
               </div>
-            )}
-
-            {/* Step 3: Select Trip Schedule */}
-            {selectedPickup && (
-              <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">3. Select Bus Trip Schedule</label>
-                <div className="space-y-2">
-                  {(!selectedRoute.trips || selectedRoute.trips.length === 0) ? (
-                    <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-xl text-center">
-                      <p className="text-xs text-neutral-500 font-medium">No trips scheduled for this route yet.</p>
-                    </div>
-                  ) : (
-                    selectedRoute.trips.map((trip: any) => (
+            ) : (
+              <>
+                {/* Step 1: Select Route */}
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">1. Select Travel Route</label>
+                  <div className="space-y-2">
+                    {selectedEvent.routes?.map((route: any) => (
                       <div
-                        key={trip.id}
-                        onClick={() => setSelectedTrip(trip)}
-                        className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${selectedTrip?.id === trip.id ? 'border-green-600 bg-green-50/50' : 'border-neutral-200'}`}
+                        key={route.id}
+                        onClick={() => { 
+                          setSelectedRoute(route); 
+                          setSelectedPickup(null); 
+                          setSelectedTrip(null); 
+                        }}
+                        className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${selectedRoute?.id === route.id ? 'border-green-600 bg-green-50/50' : 'border-neutral-200 hover:border-neutral-300'}`}
                       >
                         <div>
-                          <p className="text-xs font-bold text-neutral-950">Departure: {new Date(trip.departureTime).toLocaleString()}</p>
-                          <p className="text-[10px] text-neutral-500">Vehicle: {trip.vehicle ? `${trip.vehicle.make} ${trip.vehicle.model} (${trip.vehicle.plateNumber})` : 'Assigned Bus'}</p>
+                          <p className="text-xs font-bold text-neutral-950">{route.originCity} ➔ {route.destination}</p>
                         </div>
+                        <span className="text-xs font-mono font-black text-green-600">₦{Number(route.price || 0).toLocaleString()}</span>
                       </div>
-                    ))
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
 
-            {/* Proceed to Payment Sheet Button */}
-            <button
-              disabled={!selectedRoute || !selectedPickup || !selectedTrip}
-              onClick={handleOpenPaymentSheet}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-bold py-3.5 rounded-2xl text-xs transition-colors shadow-md"
-            >
-              {selectedTrip ? `Proceed to Pay ₦${Number(selectedRoute.price).toLocaleString()}` : 'Complete Selections to Continue'}
-            </button>
+                {/* Step 2: Select Pickup Landmark */}
+                {selectedRoute && (
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">2. Select Pickup Landmark</label>
+                    <div className="space-y-2">
+                      {selectedRoute.pickupPoints?.map((pickup: any) => (
+                        <div
+                          key={pickup.id}
+                          onClick={() => setSelectedPickup(pickup)}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all ${selectedPickup?.id === pickup.id ? 'border-green-600 bg-green-50/50' : 'border-neutral-200'}`}
+                        >
+                          <p className="text-xs font-bold text-neutral-950">{pickup.name}</p>
+                          <p className="text-[10px] text-neutral-500">{pickup.address}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 3: Select Trip Schedule OR Trigger Waitlist */}
+                {selectedPickup && (
+                  <div className="space-y-3">
+                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">3. Select Bus Trip Schedule</label>
+                    <div className="space-y-2">
+                      {(!selectedRoute.trips || selectedRoute.trips.length === 0) ? (
+                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+                          <div className="flex items-center gap-2 text-amber-800 text-xs font-bold">
+                            <BellRing size={15} />
+                            <span>No schedules created for this route yet.</span>
+                          </div>
+                          <p className="text-[11px] text-amber-700">Join the waitlist to receive instant notifications and priority booking links the moment the organizer launches this bus schedule.</p>
+                          <button
+                            disabled={waitlistLoading}
+                            onClick={handleJoinWaitlist}
+                            className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2"
+                          >
+                            {waitlistLoading ? (
+                              <>
+                                <Loader2 size={14} className="animate-spin" />
+                                Joining Waitlist...
+                              </>
+                            ) : (
+                              'Join Route Waitlist'
+                            )}
+                          </button>
+                        </div>
+                      ) : (
+                        selectedRoute.trips.map((trip: any) => (
+                          <div
+                            key={trip.id}
+                            onClick={() => setSelectedTrip(trip)}
+                            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${selectedTrip?.id === trip.id ? 'border-green-600 bg-green-50/50' : 'border-neutral-200'}`}
+                          >
+                            <div>
+                              <p className="text-xs font-bold text-neutral-950">Departure: {new Date(trip.departureTime).toLocaleString()}</p>
+                              <p className="text-[10px] text-neutral-500">Vehicle: {trip.vehicle ? `${trip.vehicle.make} ${trip.vehicle.model} (${trip.vehicle.plateNumber})` : 'Assigned Bus'}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Proceed to Payment Sheet Button (Only if trips exist and selected) */}
+                {selectedRoute?.trips && selectedRoute.trips.length > 0 && (
+                  <button
+                    disabled={!selectedRoute || !selectedPickup || !selectedTrip}
+                    onClick={handleOpenPaymentSheet}
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-bold py-3.5 rounded-2xl text-xs transition-colors shadow-md"
+                  >
+                    {selectedTrip ? `Proceed to Pay ₦${Number(selectedRoute.price).toLocaleString()}` : 'Complete Selections to Continue'}
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}

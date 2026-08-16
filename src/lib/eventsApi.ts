@@ -42,4 +42,14 @@ export const eventsApi = {
     const response = await api.post('/flutterwave/initialize', data);
     return response.data;
   },
+
+  // Join waitlist for a route when no trips are scheduled yet
+  joinWaitlist: async (data: {
+    eventId: string;
+    routeId: string;
+    pickupPointId?: string | null;
+  }) => {
+    const response = await api.post('/events/waitlist', data);
+    return response.data;
+  },
 };

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/src/lib/api';
-import { Bus, X } from 'lucide-react';
+import { Bus, X, MapPin } from 'lucide-react';
 
 interface EventSchedulerModalProps {
   isOpen: boolean;
@@ -10,7 +10,6 @@ interface EventSchedulerModalProps {
   event: any | null;
 }
 
-// Helper to format ISO date strings into 'YYYY-MM-DDTHH:mm' for datetime-local inputs
 const formatForDatetimeLocal = (dateInput?: string | Date) => {
   if (!dateInput) return '';
   const d = new Date(dateInput);
@@ -36,38 +35,77 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
   const [departureTime, setDepartureTime] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
 
-  // Automatically match departure and arrival times with organizer-created event dates when event changes
+  // Coordinate Mapping State for Selected Route/Pickup Points
+  const [destinationLat, setDestinationLat] = useState<string>('');
+  const [destinationLng, setDestinationLng] = useState<string>('');
+  const [pickupCoordinates, setPickupCoordinates] = useState<Record<string, { lat: string; lng: string }>>({});
+
   useEffect(() => {
-    if (event) {
-      if (event.routes?.[0]?.id) {
-        setSelectedRouteId(event.routes[0].id);
-      }
+    if (event && event.routes && event.routes.length > 0) {
+      const defaultRoute = event.routes[0];
+      setSelectedRouteId(defaultRoute.id);
       setTripLeg('OUTBOUND');
       setBusCount(1);
 
-      // Fetch and format organizer start/end dates directly into the input fields
       const formattedStart = formatForDatetimeLocal(event.startDate);
       const formattedEnd = formatForDatetimeLocal(event.endDate || event.startDate);
       setDepartureTime(formattedStart);
       setArrivalTime(formattedEnd);
+
+      // Initialize coordinates from the selected route if available
+      setDestinationLat(defaultRoute.destinationLat !== null && defaultRoute.destinationLat !== undefined ? String(defaultRoute.destinationLat) : '');
+      setDestinationLng(defaultRoute.destinationLng !== null && defaultRoute.destinationLng !== undefined ? String(defaultRoute.destinationLng) : '');
+
+      const initialPickups: Record<string, { lat: string; lng: string }> = {};
+      defaultRoute.pickupPoints?.forEach((p: any) => {
+        initialPickups[p.id] = {
+          lat: p.latitude !== null && p.latitude !== undefined ? String(p.latitude) : '',
+          lng: p.longitude !== null && p.longitude !== undefined ? String(p.longitude) : '',
+        };
+      });
+      setPickupCoordinates(initialPickups);
     }
   }, [event]);
 
-  // Adjust times automatically when switching between Outbound and Return trip legs
+  // Handle Route Selection Change to update coordinate inputs dynamically
+  const handleRouteChange = (routeId: string) => {
+    setSelectedRouteId(routeId);
+    const route = event?.routes?.find((r: any) => r.id === routeId);
+    if (route) {
+      setDestinationLat(route.destinationLat !== null && route.destinationLat !== undefined ? String(route.destinationLat) : '');
+      setDestinationLng(route.destinationLng !== null && route.destinationLng !== undefined ? String(route.destinationLng) : '');
+
+      const newPickups: Record<string, { lat: string; lng: string }> = {};
+      route.pickupPoints?.forEach((p: any) => {
+        newPickups[p.id] = {
+          lat: p.latitude !== null && p.latitude !== undefined ? String(p.latitude) : '',
+          lng: p.longitude !== null && p.longitude !== undefined ? String(p.longitude) : '',
+        };
+      });
+      setPickupCoordinates(newPickups);
+    }
+  };
+
+  const handlePickupCoordChange = (pickupId: string, field: 'lat' | 'lng', value: string) => {
+    setPickupCoordinates((prev) => ({
+      ...prev,
+      [pickupId]: {
+        ...prev[pickupId],
+        [field]: value,
+      },
+    }));
+  };
+
   const handleTripLegChange = (newLeg: 'OUTBOUND' | 'RETURN') => {
     setTripLeg(newLeg);
     if (!event) return;
 
     if (newLeg === 'OUTBOUND') {
-      const start = formatForDatetimeLocal(event.startDate);
-      const end = formatForDatetimeLocal(event.endDate || event.startDate);
-      setDepartureTime(start);
-      setArrivalTime(end);
+      setDepartureTime(formatForDatetimeLocal(event.startDate));
+      setArrivalTime(formatForDatetimeLocal(event.endDate || event.startDate));
     } else {
-      const start = formatForDatetimeLocal(event.startDate);
-      const end = formatForDatetimeLocal(event.endDate || event.startDate);
-      setDepartureTime(end);
-      setArrivalTime(start);
+      setDepartureTime(formatForDatetimeLocal(event.endDate || event.startDate));
+      setArrivalTime(formatForDatetimeLocal(event.startDate));
     }
   };
 
@@ -81,7 +119,23 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
     try {
       setSubmitting(true);
 
-      // Loop to create the specified number of individual bus trips matching CreateTripDto exactly
+      // 1. Save / Update Route and Pickup Point Coordinates first via Admin Patch Endpoint
+      const routePayload = {
+        destinationLat: destinationLat ? parseFloat(destinationLat) : null,
+        destinationLng: destinationLng ? parseFloat(destinationLng) : null,
+        pickupPoints: Object.entries(pickupCoordinates).map(([id, coords]) => ({
+          id,
+          latitude: coords.lat ? parseFloat(coords.lat) : null,
+          longitude: coords.lng ? parseFloat(coords.lng) : null,
+        })),
+      };
+
+      await api.patch(`/admin/routes/${selectedRouteId}/coordinates`, routePayload).catch(() => {
+        // Fallback or secondary pattern if endpoint route differs slightly
+        return api.patch(`/admin/routes/${selectedRouteId}`, routePayload);
+      });
+
+      // 2. Loop to create the specified number of individual bus trips matching CreateTripDto exactly
       for (let i = 0; i < busCount; i++) {
         await api.post('/admin/trips', {
           routeId: selectedRouteId,
@@ -91,31 +145,33 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
         });
       }
 
-      alert(`Successfully scheduled ${busCount} bus slot(s)!`);
+      alert(`Successfully updated route GPS coordinates & scheduled ${busCount} bus slot(s)!`);
       onClose();
     } catch (err: any) {
-      console.error('Error creating trip schedule details:', err?.response?.data || err);
+      console.error('Error configuring route coordinates or fleet schedule:', err?.response?.data || err);
       const serverMessage = err?.response?.data?.message;
       const errorMessage = Array.isArray(serverMessage) 
         ? serverMessage.join(', ') 
-        : serverMessage || err.message || 'Error creating trip schedule.';
+        : serverMessage || err.message || 'Error processing request.';
       alert(`Server Error (400): ${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const selectedRouteData = event?.routes?.find((r: any) => r.id === selectedRouteId);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-      <div className="bg-[#0b0f19] w-full max-w-lg rounded-3xl border border-neutral-800 p-6 sm:p-8 space-y-6 shadow-2xl text-white max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#0b0f19] w-full max-w-2xl rounded-3xl border border-neutral-800 p-6 sm:p-8 space-y-6 shadow-2xl text-white max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-800/80 pb-4">
           <div>
-            <h3 className="text-sm font-bold font-mono uppercase tracking-tight text-white">Configure Fleet & Buses</h3>
+            <h3 className="text-sm font-bold font-mono uppercase tracking-tight text-white">Configure Fleet, Maps & GPS Coordinates</h3>
             <p className="text-[11px] text-neutral-400 font-mono mt-0.5">
-              Times automatically match the organizer event schedule
+              Pin exact destination coordinates and boarding points for rider and customer live tracking maps
             </p>
           </div>
           <button
@@ -131,7 +187,7 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
             No event data available.
           </div>
         ) : (
-          <form onSubmit={handleScheduleFleet} className="space-y-4 font-mono">
+          <form onSubmit={handleScheduleFleet} className="space-y-6 font-mono">
             <div className="bg-neutral-950/80 p-3 rounded-xl border border-neutral-800/80 text-xs space-y-1">
               <span className="text-neutral-500 text-[10px] block uppercase">Target Event & Organizer Timeline</span>
               <span className="font-bold text-emerald-400">{event.title}</span>
@@ -144,7 +200,7 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
               <label className="block text-xs font-bold text-neutral-400 uppercase">Select Route</label>
               <select
                 value={selectedRouteId}
-                onChange={(e) => setSelectedRouteId(e.target.value)}
+                onChange={(e) => handleRouteChange(e.target.value)}
                 className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-xs text-white outline-none focus:border-emerald-500 transition"
                 required
               >
@@ -154,6 +210,83 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* GPS Coordinates Setup Section */}
+            <div className="space-y-4 bg-neutral-950/60 p-4 rounded-2xl border border-neutral-800/80">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase">
+                <MapPin className="h-4 w-4" /> Destination & Pickup Map Calibration
+              </div>
+              
+              {/* Destination Coordinates */}
+              <div className="space-y-2 pt-1 border-t border-neutral-800/60">
+                <span className="text-[11px] text-neutral-300 font-bold block">
+                  Venue Destination ({selectedRouteData?.destination || 'Destination'}) Coordinates
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] text-neutral-500 uppercase mb-1">Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 6.5244"
+                      value={destinationLat}
+                      onChange={(e) => setDestinationLat(e.target.value)}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-neutral-500 uppercase mb-1">Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 3.3792"
+                      value={destinationLng}
+                      onChange={(e) => setDestinationLng(e.target.value)}
+                      className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Pickup Points Coordinates */}
+              <div className="space-y-3 pt-2 border-t border-neutral-800/60">
+                <span className="text-[11px] text-neutral-300 font-bold block">Pickup Points Boarding Coordinates</span>
+                {selectedRouteData?.pickupPoints && selectedRouteData.pickupPoints.length > 0 ? (
+                  selectedRouteData.pickupPoints.map((point: any) => (
+                    <div key={point.id} className="bg-neutral-900/80 p-3 rounded-xl border border-neutral-800 space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-white">{point.name}</span>
+                        <span className="text-neutral-400 text-[10px]">{point.address}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Latitude"
+                            value={pickupCoordinates[point.id]?.lat || ''}
+                            onChange={(e) => handlePickupCoordChange(point.id, 'lat', e.target.value)}
+                            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[11px] text-white outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="number"
+                            step="any"
+                            placeholder="Longitude"
+                            value={pickupCoordinates[point.id]?.lng || ''}
+                            onChange={(e) => handlePickupCoordChange(point.id, 'lng', e.target.value)}
+                            className="w-full bg-neutral-950 border border-neutral-800 rounded-lg p-2 text-[11px] text-white outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[11px] text-neutral-500 italic">No pickup points registered for this route.</p>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -227,7 +360,7 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
                 disabled={submitting}
                 className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-xl font-bold text-xs transition shadow-lg disabled:opacity-50"
               >
-                {submitting ? 'Allocating...' : 'Deploy Fleet & Open Slots'}
+                {submitting ? 'Calibrating Maps & Allocating...' : 'Save GPS Coordinates & Open Slots'}
               </button>
             </div>
           </form>

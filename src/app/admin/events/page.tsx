@@ -109,13 +109,14 @@ export default function AdminEventsPage() {
   };
 
   // Publish Trip Live
-  const handlePublishTrip = async (tripId: string) => {
+const handlePublishTrip = async (tripId: string) => {
     try {
       await api.patch(`/admin/trips/${tripId}/publish-live`);
       alert('Trip published live! Notifications dispatched.');
       fetchEvents();
-    } catch (err) {
-      alert('Error publishing trip live.');
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.message || 'Error publishing trip live.';
+      alert(errorMsg);
     }
   };
 
