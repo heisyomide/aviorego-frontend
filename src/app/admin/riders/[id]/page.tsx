@@ -46,13 +46,20 @@ export default function RiderProfilePage() {
     fetchRiderProfile();
   }, [id]);
 
-  const handleStatusUpdate = async (action: 'SUSPEND' | 'APPROVE' | 'BAN') => {
+const handleStatusUpdate = async (action: 'SUSPEND' | 'APPROVE' | 'BAN') => {
     if (!rider || !confirm(`Are you sure you want to perform action: ${action}?`)) return;
 
     try {
       setIsUpdating(true);
-      const res = await api.patch(`/admin/riders/${rider.id}/status`, { action });
+      const reasonPrompt = action !== 'APPROVE' ? prompt('Provide a reason:') : undefined;
+
+      const res = await api.patch(`/admin/riders/${rider.id}/status`, { 
+        action,
+        reason: reasonPrompt 
+      });
+
       setRider((prev) => (prev ? { ...prev, status: res.data.status || action } : null));
+      alert(`Rider status successfully updated to ${action}.`);
     } catch (err: any) {
       alert(err.response?.data?.message || 'Failed to update rider status');
     } finally {
@@ -96,7 +103,7 @@ export default function RiderProfilePage() {
           <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-wide">{rider.vehicle || 'Unspecified Vehicle'}</p>
         </div>
         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide ${
-          rider.status === 'Online' 
+          rider.status === 'Online' || rider.status === 'Verified'
             ? 'bg-green-50 text-green-600 border border-green-100' 
             : 'bg-neutral-100 text-neutral-500'
         }`}>

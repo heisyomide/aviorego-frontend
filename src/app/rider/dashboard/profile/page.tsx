@@ -1,8 +1,9 @@
+// app/rider/dashboard/profile/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { LifeBuoy, ChevronRight } from 'lucide-react';
+import { LifeBuoy, Calendar, ChevronRight } from 'lucide-react';
 
 import profileService from './services/profileService';
 import { RiderProfile } from './types';
@@ -80,6 +81,31 @@ export default function RiderProfilePage() {
           profile={profile}
           onEdit={() => setBankModalOpen(true)}
         />
+
+        {/* --- EVENT TRIPS REDIRECTION CARD --- */}
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Event Trips & Manifests</h3>
+                <p className="text-sm text-neutral-400">
+                  View scheduled event transit legs, passenger manifests, and launch active GPS navigation workspaces.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/rider/dashboard/jobs/events/trip"
+              className="inline-flex items-center space-x-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-500 shadow-md shadow-blue-600/20"
+            >
+              <span>View Event Trips</span>
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
 
         {/* --- SUPPORT & TICKETS LINK --- */}
         <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg">

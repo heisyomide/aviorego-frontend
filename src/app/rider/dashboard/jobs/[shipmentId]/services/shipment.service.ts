@@ -1,58 +1,39 @@
 // src/app/rider/dashboard/jobs/[shipmentId]/services/shipment.service.ts
 
 import { api } from '../../../../../../lib/api';
-import type { ShipmentResponse } from '../types';
 
-class ShipmentService {
-  /**
-   * Get Shipment Details
-   */
-  async getShipment(shipmentId: string): Promise<ShipmentResponse> {
-    const response = await api.get(`/rider/jobs/${shipmentId}`);
+class JobService {
+  async getJobDetails(jobId: string) {
+    const response = await api.get(`/rider/jobs/${jobId}`);
+    return response.data; // Returns { jobType, job: { ... } }
+  }
+
+  async acceptJob(jobId: string) {
+    const response = await api.post(`/rider/jobs/${jobId}/accept`, {});
     return response.data;
   }
 
-  /**
-   * Accept Job
-   */
-  async acceptJob(shipmentId: string) {
-    const response = await api.post(`/rider/jobs/${shipmentId}/accept`, {});
+  async arrivedAtPickup(jobId: string) {
+    const response = await api.patch(`/rider/jobs/${jobId}/arrive-pickup`, {});
     return response.data;
   }
 
-  /**
-   * Arrived At Pickup
-   */
-  async arrivedAtPickup(shipmentId: string) {
-    const response = await api.patch(`/rider/jobs/${shipmentId}/arrive-pickup`, {});
+  async pickup(jobId: string) {
+    const response = await api.patch(`/rider/jobs/${jobId}/pickup`, {});
     return response.data;
   }
 
-  /**
-   * Pickup Confirmed
-   */
-  async pickup(shipmentId: string) {
-    const response = await api.patch(`/rider/jobs/${shipmentId}/pickup`, {});
+  async arrivedAtDestination(jobId: string) {
+    const response = await api.patch(`/rider/jobs/${jobId}/arrive-destination`, {});
     return response.data;
   }
 
-  /**
-   * Arrived At Destination
-   */
-  async arrivedAtDestination(shipmentId: string) {
-    const response = await api.patch(`/rider/jobs/${shipmentId}/arrive-destination`, {});
-    return response.data;
-  }
-
-  /**
-   * Complete Delivery
-   */
-  async complete(shipmentId: string, verificationPin: string) {
-    const response = await api.post(`/rider/jobs/${shipmentId}/complete`, {
+  async complete(jobId: string, verificationPin: string) {
+    const response = await api.post(`/rider/jobs/${jobId}/complete`, {
       verificationPin,
     });
     return response.data;
   }
 }
 
-export default new ShipmentService();
+export default new JobService();

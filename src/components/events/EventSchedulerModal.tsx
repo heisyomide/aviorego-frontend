@@ -130,7 +130,7 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
         })),
       };
 
-      await api.patch(`/admin/routes/${selectedRouteId}/coordinates`, routePayload).catch(() => {
+      await api.patch(`/admin/${selectedRouteId}/coordinates`, routePayload).catch(() => {
         // Fallback or secondary pattern if endpoint route differs slightly
         return api.patch(`/admin/routes/${selectedRouteId}`, routePayload);
       });

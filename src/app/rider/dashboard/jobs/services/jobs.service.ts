@@ -1,3 +1,4 @@
+// src/app/rider/dashboard/jobs/services/jobs.service.ts
 import { api } from '../../../../../lib/api';
 
 import type {
@@ -18,6 +19,17 @@ class RiderJobsService {
   }
 
   /**
+   * Get Event Transit Jobs Feed
+   */
+  async getEventTransitJobs() {
+    const response = await api.get(
+      '/rider/jobs/events',
+    );
+
+    return response.data;
+  }
+
+  /**
    * Get Single Job
    */
   async getJob(
@@ -28,6 +40,32 @@ class RiderJobsService {
     );
 
     return response.data.shipment;
+  }
+
+  /**
+   * Get Active Event Trip Details (Manifest & Stops)
+   */
+  async getActiveEventTripDetails(tripId: string) {
+    const response = await api.get(
+      `/events/trips/${tripId}/active-details`,
+    );
+
+    return response.data;
+  }
+
+  /**
+   * Check-in Passenger by QR Token
+   */
+  async checkInPassenger(tripId: string, qrToken: string) {
+    const response = await api.post(
+      '/events/check-in',
+      {
+        tripId,
+        qrToken,
+      },
+    );
+
+    return response.data;
   }
 
   /**
@@ -43,6 +81,15 @@ class RiderJobsService {
     return response.data;
   }
 
+  /**
+   * Accept Event Job
+   */
+  async acceptEventJob(tripId: string) {
+    const response = await api.post(
+      `/events/trips/${tripId}/accept`,
+    );
+    return response.data;
+  }
   /**
    * Arrived at Pickup
    * Customer Timeline:
@@ -83,6 +130,17 @@ class RiderJobsService {
   ) {
     const response = await api.patch(
       `/rider/jobs/${shipmentId}/arrive-destination`,
+    );
+
+    return response.data;
+  }
+
+  /**
+   * Get Accepted/Active Event Trips for the Rider
+   */
+async getAcceptedEventTrips() {
+    const response = await api.get(
+      '/events/trips/accepted', // Updated to match the controller prefix and path
     );
 
     return response.data;
