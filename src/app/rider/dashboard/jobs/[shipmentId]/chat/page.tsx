@@ -52,7 +52,7 @@ export default function RiderChatPage() {
     jobId: routeParamId,
     fetchShipment: async () => {
       if (!routeParamId) throw new Error('Missing shipment ID reference.');
-      const response: any = await ShipmentService.getShipment(routeParamId);
+     const response: any = await ShipmentService.getJob(routeParamId);
       const shipmentData = response?.shipment || response || {};
       
       return {

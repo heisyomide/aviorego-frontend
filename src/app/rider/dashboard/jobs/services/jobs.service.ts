@@ -90,6 +90,7 @@ class RiderJobsService {
     );
     return response.data;
   }
+
   /**
    * Arrived at Pickup
    * Customer Timeline:
@@ -138,9 +139,9 @@ class RiderJobsService {
   /**
    * Get Accepted/Active Event Trips for the Rider
    */
-async getAcceptedEventTrips() {
+  async getAcceptedEventTrips() {
     const response = await api.get(
-      '/events/trips/accepted', // Updated to match the controller prefix and path
+      '/events/trips/accepted',
     );
 
     return response.data;

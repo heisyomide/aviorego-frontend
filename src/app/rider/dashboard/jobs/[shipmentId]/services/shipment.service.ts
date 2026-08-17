@@ -8,6 +8,15 @@ class JobService {
     return response.data; // Returns { jobType, job: { ... } }
   }
 
+  // Add these aliases to support any component calling getJob or getShipment
+  async getJob(jobId: string) {
+    return this.getJobDetails(jobId);
+  }
+
+  async getShipment(jobId: string) {
+    return this.getJobDetails(jobId);
+  }
+
   async acceptJob(jobId: string) {
     const response = await api.post(`/rider/jobs/${jobId}/accept`, {});
     return response.data;
