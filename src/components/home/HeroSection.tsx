@@ -1,105 +1,160 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, MapPin, Zap } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Package, Calendar, Briefcase, Users, Bus } from "lucide-react";
+
+const carouselSlides = [
+  {
+    id: 1,
+    badge: "Express Delivery",
+    titleLine1: "Fast & Reliable",
+    titleHighlight: "Package Delivery",
+    description: "Send and receive parcels seamlessly across cities from local stores straight to your doorstep with real-time tracking.",
+    primaryCta: { label: "Send a Package Now", href: "/dashboard/shipment/create" },
+    secondaryCta: { label: "Track Shipment", href: "#track" },
+    badgeIcon: Package,
+  },
+  {
+    id: 2,
+    badge: "Event Experiences",
+    titleLine1: "Discover & Attend",
+    titleHighlight: "Unforgettable Events",
+    description: "Explore recent concerts, festivals, and conferences. Secure your entry passes and guarantee your travel ride.",
+    primaryCta: { label: "Explore Events", href: "/dashboard/events" },
+    secondaryCta: { label: "View Upcoming", href: "/events#upcoming" },
+    badgeIcon: Calendar,
+  },
+  {
+    id: 3,
+    badge: "Business Partnerships",
+    titleLine1: "Scale Your Business With",
+    titleHighlight: "Our Logistics Network",
+    description: "Partner with us to power your fulfillment, store deliveries, and corporate logistics while we handle the movement.",
+    primaryCta: { label: "Partner With Us", href: "/for-business" },
+    secondaryCta: { label: "Learn More", href: "/about" },
+    badgeIcon: Briefcase,
+  },
+  {
+    id: 4,
+    badge: "Organizer Management",
+    titleLine1: "Manage Fleet & Logistics",
+    titleHighlight: "Effortlessly For Your Event",
+    description: "Take full control of your event transportation. Coordinate bus fleets, verified drivers, and passenger manifests.",
+    primaryCta: { label: "Create Organizer Account", href: "/organizer/signup" },
+    secondaryCta: { label: "Organizer Portal", href: "/events/dashboard" },
+    badgeIcon: Users,
+  },
+  {
+    id: 5,
+    badge: "Intra-State Rides",
+    titleLine1: "Comfortable Group Transit",
+    titleHighlight: "Across Cities & States",
+    description: "Reliable movement connecting Osogbo, Ede, Ibadan, and Ogbomoso. Safe rides designed for group transit and event commuters.",
+    primaryCta: { label: "Book a Ride", href: "/trips" },
+    secondaryCta: { label: "View Routes", href: "/trips" },
+    badgeIcon: Bus,
+  }
+];
 
 export default function HeroSection() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  // Auto slide effect every 6 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prevIndex) => (prevIndex + 1) % carouselSlides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const nextSlide = () => {
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % carouselSlides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prevIndex) => (prevIndex - 1 + carouselSlides.length) % carouselSlides.length);
+  };
+
+  const currentSlide = carouselSlides[currentIndex];
+  const BadgeIcon = currentSlide.badgeIcon;
+
   return (
-    <section className="relative overflow-hidden bg-gradient-to-b from-emerald-50/50 via-white to-white py-12 md:py-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <section className="relative overflow-hidden bg-gradient-to-br from-neutral-950 via-emerald-950 to-neutral-950 py-10 md:py-16 text-white">
+      {/* Subtle background glow overlays */}
+      <div className="absolute top-0 left-1/4 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-green-600/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#10b9810a_1px,transparent_1px),linear-gradient(to_bottom,#10b9810a_1px,transparent_1px)] bg-[size:3rem_3rem] pointer-events-none" />
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-2xl mx-auto text-center space-y-4">
           
-          {/* Left Hero Content */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100/80 border border-emerald-200 text-emerald-800 text-xs font-bold">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Serving Osun State & Oyo State, Nigeria
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-neutral-900 tracking-tight leading-[1.1]">
-              Fast, Reliable <br />
-              <span className="text-emerald-600">Intra-State Logistics</span>
-            </h1>
-
-            <p className="text-sm sm:text-base text-neutral-600 max-w-xl leading-relaxed">
-              Send and receive parcels seamlessly across Osogbo, Ede, Ibadan, and Ogbomoso. Track your packages in real-time with verified couriers.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <Link
-                href="/shipments/create"
-                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-6 py-3.5 rounded-full shadow-lg shadow-emerald-600/25 transition-all hover:scale-105"
-              >
-                <span>Send Package Now</span>
-                <ArrowRight size={16} />
-              </Link>
-              <Link
-                href="#track"
-                className="inline-flex items-center gap-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-bold text-xs px-6 py-3.5 rounded-full transition-colors"
-              >
-                Track Shipment
-              </Link>
-            </div>
-
-            {/* Badges */}
-            <div className="grid grid-cols-3 gap-4 pt-6 border-t border-neutral-200/80 max-w-md">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={18} className="text-emerald-600 shrink-0" />
-                <span className="text-[11px] font-bold text-neutral-700">Verified Couriers</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin size={18} className="text-emerald-600 shrink-0" />
-                <span className="text-[11px] font-bold text-neutral-700">Live GPS Tracking</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Zap size={18} className="text-emerald-600 shrink-0" />
-                <span className="text-[11px] font-bold text-neutral-700">Escrow Security</span>
-              </div>
-            </div>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[11px] font-bold backdrop-blur-md shadow-md">
+            <BadgeIcon size={13} className="text-emerald-400 animate-pulse" />
+            <span>{currentSlide.badge}</span>
           </div>
 
-          {/* Right Hero Graphic Mockup */}
-          <div className="lg:col-span-5 relative">
-            <div className="bg-neutral-900 text-white rounded-3xl p-6 shadow-2xl relative overflow-hidden border border-neutral-800 space-y-5">
-              <div className="flex items-center justify-between border-b border-neutral-800 pb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-                  <span className="text-xs font-bold tracking-wide uppercase text-neutral-300">
-                    Active Delivery
-                  </span>
-                </div>
-                <span className="text-[10px] font-mono bg-neutral-800 px-2 py-1 rounded text-neutral-400">
-                  AVG-9482-OS
-                </span>
-              </div>
+          {/* Headline */}
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-[1.15]">
+            {currentSlide.titleLine1} <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-green-300 to-teal-400">
+              {currentSlide.titleHighlight}
+            </span>
+          </h1>
 
-              {/* Delivery Graphic Simulation */}
-              <div className="space-y-4 text-xs">
-                <div className="flex items-start gap-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-bold text-neutral-200">Pick-up Location</p>
-                    <p className="text-neutral-400 text-[11px]">Oke-Fia, Osogbo, Osun State</p>
-                  </div>
-                </div>
-                <div className="w-0.5 h-6 bg-neutral-800 ml-1.5" />
-                <div className="flex items-start gap-3">
-                  <div className="w-3 h-3 rounded-full bg-orange-500 mt-0.5 shrink-0" />
-                  <div>
-                    <p className="font-bold text-neutral-200">Drop-off Destination</p>
-                    <p className="text-neutral-400 text-[11px]">Bodija, Ibadan, Oyo State</p>
-                  </div>
-                </div>
-              </div>
+          {/* Description */}
+          <p className="text-xs sm:text-sm text-neutral-300 max-w-lg mx-auto leading-relaxed">
+            {currentSlide.description}
+          </p>
 
-              <div className="pt-4 border-t border-neutral-800 flex items-center justify-between text-xs">
-                <div>
-                  <p className="text-[10px] text-neutral-500 font-bold uppercase">Estimated Time</p>
-                  <p className="font-extrabold text-emerald-400">45 Mins</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-neutral-500 font-bold uppercase">Delivery Status</p>
-                  <p className="font-extrabold text-white">In Transit</p>
-                </div>
-              </div>
+          {/* CTAs */}
+          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
+            <Link
+              href={currentSlide.primaryCta.href}
+              className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black text-xs px-6 py-3 rounded-full shadow-lg shadow-emerald-500/25 transition-all hover:scale-105"
+            >
+              <span>{currentSlide.primaryCta.label}</span>
+              <ArrowRight size={14} />
+            </Link>
+            <Link
+              href={currentSlide.secondaryCta.href}
+              className="inline-flex items-center gap-2 bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 font-bold text-xs px-6 py-3 rounded-full transition-colors backdrop-blur-md shadow-md"
+            >
+              {currentSlide.secondaryCta.label}
+            </Link>
+          </div>
+
+          {/* Carousel Controls & Indicators */}
+          <div className="flex items-center justify-between pt-6 border-t border-neutral-800/80 max-w-xs mx-auto mt-4">
+            <div className="flex items-center gap-1.5">
+              {carouselSlides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentIndex(idx)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    currentIndex === idx ? 'w-6 bg-emerald-400' : 'w-1.5 bg-neutral-700 hover:bg-neutral-500'
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={prevSlide}
+                className="w-8 h-8 rounded-full border border-neutral-700 bg-neutral-900/80 flex items-center justify-center text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors shadow-sm"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="w-8 h-8 rounded-full border border-neutral-700 bg-neutral-900/80 flex items-center justify-center text-neutral-300 hover:bg-neutral-800 hover:text-white transition-colors shadow-sm"
+                aria-label="Next slide"
+              >
+                <ChevronRight size={14} />
+              </button>
             </div>
           </div>
 

@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '../../context/AuthContext';
 
 export default function CustomerDashboardLayout({
   children,
@@ -10,11 +11,41 @@ export default function CustomerDashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading } = useAuth();
+
+  // Fast protection: Redirect unauthenticated or non-customer users immediately
+  useEffect(() => {
+    if (!loading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (user.role !== 'CUSTOMER') {
+        router.replace('/');
+      }
+    }
+  }, [user, loading, router]);
 
   const isActive = (route: string) => {
     if (route === '/dashboard') return pathname === route;
     return pathname.startsWith(route);
   };
+
+  // Prevent flash of dashboard content while verifying credentials
+  if (loading || !user || user.role !== 'CUSTOMER') {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-7 h-7 border-3 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const displayName = user.firstName 
+    ? `${user.firstName} ${user.lastName?.[0] ? user.lastName[0] + '.' : ''}`
+    : user.email.split('@')[0];
+
+  const initials = user.firstName && user.lastName
+    ? `${user.firstName[0]}${user.lastName[0]}`.toUpperCase()
+    : user.email.slice(0, 2).toUpperCase();
 
   return (
     <div className="min-h-screen bg-white text-neutral-950 font-sans flex flex-col justify-between antialiased">
@@ -23,7 +54,7 @@ export default function CustomerDashboardLayout({
       <header className="bg-white/90 backdrop-blur-md border-b border-neutral-200 px-6 py-4 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <Link href="/dashboard" className="text-xl font-black tracking-tight text-neutral-950 hover:text-green-600 transition-colors">
-            Aviorè
+            Aviorè<span className="text-green-600">Go</span>
           </Link>
           <span className="bg-green-600 text-white text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
             Customer
@@ -31,11 +62,11 @@ export default function CustomerDashboardLayout({
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-bold text-neutral-950 leading-none">Ayomide K.</p>
+            <p className="text-xs font-bold text-neutral-950 leading-none">{displayName}</p>
             <span className="text-[9px] text-neutral-400 font-mono">Lagos Hub</span>
           </div>
-          <div className="w-8 h-8 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-sm shadow-sm font-bold">
-            AK
+          <div className="w-8 h-8 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-xs shadow-sm font-bold text-neutral-800">
+            {initials}
           </div>
         </div>
       </header>
@@ -61,7 +92,7 @@ export default function CustomerDashboardLayout({
             <span className="text-[10px] tracking-tight">Shipment</span>
           </Link>
 
-          {/* Events (New 5th Tab) */}
+          {/* Events */}
           <Link href="/dashboard/events" className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${isActive('/dashboard/events') ? 'text-green-600 font-black' : 'text-neutral-400 hover:text-neutral-900'}`}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v12.75c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z" /></svg>
             <span className="text-[10px] tracking-tight">Events</span>

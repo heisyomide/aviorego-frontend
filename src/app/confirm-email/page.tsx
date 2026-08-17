@@ -1,3 +1,4 @@
+// src/app/confirm-email/page.tsx
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -59,11 +60,21 @@ export default function ConfirmEmailPage() {
         }
 
         setStatus('success');
-        setMessage('Email verified successfully! Redirecting to onboarding...');
+        setMessage('Email verified successfully! Redirecting...');
 
-        // 4. Redirect to onboarding
+        // 4. Determine redirect path based on user role
+        const userRole = data.user?.role?.toUpperCase();
+        let redirectPath = '/become-rider'; // Default fallback
+
+        if (userRole === 'ORGANIZER') {
+          redirectPath = '/organizer/onboarding';
+        } else if (userRole === 'RIDER') {
+          redirectPath = '/become-rider';
+        }
+
+        // 5. Redirect based on role
         setTimeout(() => {
-          window.location.href = '/become-rider';
+          window.location.href = redirectPath;
         }, 1200);
 
       } catch (err: any) {

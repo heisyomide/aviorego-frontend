@@ -26,7 +26,7 @@ export default function OrganizerSettingsPage() {
     confirmPassword: '',
   });
 
-  const fetchSettings = async () => {
+const fetchSettings = async () => {
     setLoading(true);
     setError('');
     try {
@@ -34,7 +34,7 @@ export default function OrganizerSettingsPage() {
       setFormData({
         firstName: response.data.firstName || '',
         lastName: response.data.lastName || '',
-        phone: response.data.phone || '',
+        phone: response.data.supportPhone || response.data.phone || '', // 👈 Fixed property key mismatch
         companyName: response.data.companyName || '',
       });
     } catch (err: any) {

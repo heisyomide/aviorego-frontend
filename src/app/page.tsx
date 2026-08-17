@@ -8,6 +8,10 @@ import DeliveryTypesSection from "../components/home/DeliveryTypesSection";
 import PaymentsAndRiderSection from "../components/home/PaymentsAndRiderSection";
 import WhyChooseUsSection from "../components/home/WhyChooseUsSection";
 import Footer from "../components/home/Footer";
+import HomeSearchBarSection from "../components/home/HomeSearchBar";
+import VerticalServicesSection from "../components/home/ServiceSection";
+import PopularRestaurantsSection from "../components/home/PopularRestaurant";
+import UpcomingEventsSection from "../components/home/UpcomingEvents";
 
 export default function HomePage() {
   return (
@@ -15,7 +19,12 @@ export default function HomePage() {
       <Navbar />
       <main>
         <HeroSection />
+        <HomeSearchBarSection />
+        <VerticalServicesSection />
+        <PopularRestaurantsSection />
+        <UpcomingEventsSection />
         <ServicesSection />
+        
         <CoverageSection />
         <EcosystemSection />
         <HowItWorksSection />

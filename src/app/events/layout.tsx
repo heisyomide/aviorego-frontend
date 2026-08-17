@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/src/context/AuthContext';
+import { api } from '@/src/lib/api';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -21,6 +22,43 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
   const { logout, user } = useAuth();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [organizerInfo, setOrganizerInfo] = useState({
+    companyName: 'Loading Organization...',
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+  });
+
+  useEffect(() => {
+    const fetchOrganizerHeader = async () => {
+      try {
+        const response = await api.get('/events/organizer/settings');
+        setOrganizerInfo({
+          companyName: response.data.companyName || 'My Organization',
+          firstName: response.data.firstName || user?.firstName || '',
+          lastName: response.data.lastName || user?.lastName || '',
+        });
+      } catch (err) {
+        // Fallback gracefully if request fails
+        setOrganizerInfo({
+          companyName: 'Live Event Organizer',
+          firstName: user?.firstName || 'User',
+          lastName: user?.lastName || '',
+        });
+      }
+    };
+
+    fetchOrganizerHeader();
+  }, [user]);
+
+  // Generate initials for the avatar (e.g., "Grace Events" -> "GE")
+  const getInitials = (name: string) => {
+    if (!name) return 'ORG';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
 
   const navItems = [
     { label: 'Dashboard', href: '/events/dashboard', icon: LayoutDashboard },
@@ -33,6 +71,8 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
     { label: 'Reports', href: '/events/reports', icon: BarChart3 },
     { label: 'Settings', href: '/events/settings', icon: Settings },
   ];
+
+  const fullName = `${organizerInfo.firstName} ${organizerInfo.lastName}`.trim() || 'Organizer';
 
   return (
     <div className="min-h-screen bg-[#0b0f17] text-neutral-100 flex flex-col md:flex-row font-sans antialiased">
@@ -99,7 +139,7 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
         {/* Desktop Top Navigation Bar */}
         <header className="h-20 border-b border-neutral-800/60 bg-[#0e131f]/50 backdrop-blur-md px-8 hidden md:flex items-center justify-between sticky top-0 z-30">
           <div className="flex items-center gap-4">
-            <h1 className="text-sm font-bold text-white tracking-tight">Ibadan Summer Festival</h1>
+            <h1 className="text-sm font-bold text-white tracking-tight">{organizerInfo.companyName}</h1>
             <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-bold px-2.5 py-1 rounded-full uppercase">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live Event
             </span>
@@ -111,11 +151,11 @@ export default function OrganizerLayout({ children }: { children: React.ReactNod
             </div>
             <div className="flex items-center gap-3 pl-4 border-l border-neutral-800">
               <div className="text-right">
-                <span className="block text-xs font-bold text-white">{user?.firstName || 'Grace Events'}</span>
+                <span className="block text-xs font-bold text-white">{fullName}</span>
                 <span className="block text-[10px] text-neutral-400 font-mono">Organizer</span>
               </div>
               <div className="h-10 w-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-bold text-xs">
-                GE
+                {getInitials(organizerInfo.companyName)}
               </div>
             </div>
           </div>
