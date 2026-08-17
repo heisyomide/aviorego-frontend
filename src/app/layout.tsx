@@ -12,7 +12,7 @@ import { AuthProvider } from "../context/AuthContext";
 import SplashGate from "../components/SplashGate";
 import PushNotificationManager from "../components/PushNotificationManager";
 import RealtimeNotificationListener from "../components/RealtimeNotificationListener"; 
-import AppUpdateBanner from "../components/AppUpdateBanner"; // <-- Added import
+import AppUpdateBanner from "../components/AppUpdateBanner";
 
 export const viewport: Viewport = {
   themeColor: "#16a34a",
@@ -27,29 +27,30 @@ const DOMAIN_URL = "https://www.aviorego.com.ng";
 export const metadata: Metadata = {
   metadataBase: new URL(DOMAIN_URL),
   title: {
-    default: "Aviorè Go | Smart, Secure & Reliable Logistics across Osun & Oyo",
+    default: "Aviorè Go | High-End Logistics, Event Fulfillment & Smart Delivery across Osun & Oyo",
     template: "%s | Aviorè Go",
   },
   description:
-    "Fast, safe, and reliable parcel delivery across Osun State and Oyo State. Real-time GPS tracking, secure escrow payments, verified riders, and smart delivery options.",
+    "Nigeria's premier high-end logistics and event fulfillment ecosystem. Specializing in secure express parcel delivery, dedicated event transit management, real-time GPS tracking, and corporate supply chain solutions across Osun and Oyo State.",
   keywords: [
     "Aviorè Go",
     "Aviore",
-    "Logistics Nigeria",
-    "Delivery App Osogbo",
-    "Ibadan Logistics",
-    "Osun State Delivery",
-    "Oyo State Delivery",
-    "Parcel Delivery Nigeria",
-    "Express Courier",
+    "High-End Logistics Nigeria",
+    "Event Logistics Osogbo",
+    "Ibadan Corporate Logistics",
+    "Event Fulfillment Oyo",
+    "Osun State Courier Service",
+    "Secure Parcel Delivery Nigeria",
+    "Express Courier & Event Transit",
     "Same Day Delivery Osun",
     "Verified Courier Riders",
+    "Smart Supply Chain Solutions",
   ],
-  authors: [{ name: "Aviorè" }],
+  authors: [{ name: "Aviorè", url: DOMAIN_URL }],
   creator: "Aviorè",
   publisher: "Aviorè",
   applicationName: "Aviorè Go",
-  category: "Logistics & Commerce",
+  category: "Logistics, Supply Chain & Event Operations",
   
   // 🟢 iOS / Safari PWA Installability Config
   appleWebApp: {
@@ -61,18 +62,20 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    nocache: false,
     googleBot: {
       index: true,
       follow: true,
+      noimageindex: false,
       "max-image-preview": "large",
       "max-video-preview": -1,
       "max-snippet": -1,
     },
   },
   openGraph: {
-    title: "Aviorè Go | Delivering What Matters Most",
+    title: "Aviorè Go | High-End Logistics & Event Fulfillment Ecosystem",
     description:
-      "Fast, safe, and reliable parcel delivery across Osun & Oyo State. Real-time GPS tracking & escrow security.",
+      "Precision parcel delivery, robust event transit solutions, real-time GPS tracking, and enterprise-grade security across Osun & Oyo State.",
     url: DOMAIN_URL,
     siteName: "Aviorè Go",
     locale: "en_NG",
@@ -82,15 +85,17 @@ export const metadata: Metadata = {
         url: `${DOMAIN_URL}/images/og-image.jpg`,
         width: 1200,
         height: 630,
-        alt: "Aviorè Go Logistics",
+        alt: "Aviorè Go High-End Logistics and Event Fulfillment",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Aviorè Go",
+    site: "@aviorego",
+    creator: "@aviore",
+    title: "Aviorè Go | High-End Logistics & Event Fulfillment",
     description:
-      "Smart, secure & reliable parcel delivery across Osun & Oyo State.",
+      "Advanced parcel shipping, comprehensive event logistics, and real-time tracking across Osun & Oyo State.",
     images: [`${DOMAIN_URL}/images/og-image.jpg`],
   },
   icons: {
@@ -106,19 +111,50 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 🟢 Advanced Rich Schema.org Structured Data for Local Business & Logistics Enterprise
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": "LogisticsService",
-    name: "Aviorè Go",
-    url: DOMAIN_URL,
-    logo: `${DOMAIN_URL}/images/logo.png`,
-    description:
-      "Fast, safe and reliable parcel delivery across Osun and Oyo State.",
-    areaServed: [
-      { "@type": "AdministrativeArea", name: "Osun State" },
-      { "@type": "AdministrativeArea", name: "Oyo State" },
+    "@graph": [
+      {
+        "@type": "LogisticsService",
+        "@id": `${DOMAIN_URL}/#logistics`,
+        name: "Aviorè Go",
+        url: DOMAIN_URL,
+        logo: `${DOMAIN_URL}/images/logo.png`,
+        image: `${DOMAIN_URL}/images/og-image.jpg`,
+        description:
+          "High-end logistics, enterprise courier services, and specialized event fulfillment solutions across Osun and Oyo State.",
+        areaServed: [
+          { "@type": "AdministrativeArea", name: "Osun State" },
+          { "@type": "AdministrativeArea", name: "Oyo State" },
+        ],
+        serviceType: [
+          "Parcel Courier",
+          "Express Delivery",
+          "Event Logistics & Transit Management",
+          "Corporate Supply Chain",
+        ],
+        provider: {
+          "@type": "Organization",
+          name: "Aviorè",
+          url: DOMAIN_URL,
+        },
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${DOMAIN_URL}/#website`,
+        url: DOMAIN_URL,
+        name: "Aviorè Go",
+        publisher: {
+          "@type": "Organization",
+          name: "Aviorè",
+          logo: {
+            "@type": "ImageObject",
+            url: `${DOMAIN_URL}/images/logo.png`,
+          },
+        },
+      },
     ],
-    serviceType: "Parcel Courier, Express Delivery, Smart Delivery",
   };
 
   return (
