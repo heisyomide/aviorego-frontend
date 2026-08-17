@@ -7,7 +7,7 @@ const popularRestaurants = [
     name: 'Chicken Republic',
     category: 'Fast Food & Rice',
     badge: 'Coming Soon',
-    image: '/chicken.png',
+    image: '/chicken.PNG',
     tag: 'Rotisserie & Fried Chicken',
     bgLight: 'bg-gradient-to-br from-amber-50 via-yellow-50 to-orange-100 hover:from-amber-100 hover:to-orange-200',
     borderColor: 'border-amber-300/60',
