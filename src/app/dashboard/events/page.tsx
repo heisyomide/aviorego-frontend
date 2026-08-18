@@ -3,11 +3,12 @@
 import React, { useEffect, useState } from 'react';
 import { eventsApi } from '@/src/lib/eventsApi';
 import EventPaymentSheet from '@/src/components/events/EventPaymentSheet';
-import { BellRing, CheckCircle2, Loader2 } from 'lucide-react';
+import { BellRing, CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 
 export default function CustomerEventsPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedRoute, setSelectedRoute] = useState<any>(null);
   const [selectedPickup, setSelectedPickup] = useState<any>(null);
@@ -26,12 +27,42 @@ export default function CustomerEventsPage() {
     fetchEvents();
   }, []);
 
-  const fetchEvents = async () => {
+  const fetchEvents = async (isManualRefresh = false) => {
+    try {
+      if (isManualRefresh) setRefreshing(true);
+      const data = await eventsApi.getEvents();
+      setEvents(data);
+
+      if (selectedEvent) {
+        const updatedCurrentEvent = data.find((ev: any) => ev.id === selectedEvent.id);
+        if (updatedCurrentEvent) {
+          setSelectedEvent(updatedCurrentEvent);
+          
+          if (selectedRoute) {
+            const updatedRoute = updatedCurrentEvent.routes?.find((r: any) => r.id === selectedRoute.id);
+            if (updatedRoute) {
+              setSelectedRoute(updatedRoute);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load events:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const handleOpenEventModal = async (event: any) => {
+    setLoading(true);
     try {
       const data = await eventsApi.getEvents();
       setEvents(data);
+      const freshEventData = data.find((ev: any) => ev.id === event.id) || event;
+      setSelectedEvent(freshEventData);
     } catch (error) {
-      console.error('Failed to load events:', error);
+      setSelectedEvent(event);
     } finally {
       setLoading(false);
     }
@@ -50,7 +81,6 @@ export default function CustomerEventsPage() {
 
     setWaitlistLoading(true);
     try {
-      // Call your backend waitlist API method
       await eventsApi.joinWaitlist({
         eventId: selectedEvent.id,
         routeId: selectedRoute.id,
@@ -66,7 +96,7 @@ export default function CustomerEventsPage() {
     }
   };
 
-  const handleFlutterwaveCheckout = async () => {
+const handleFlutterwaveCheckout = async () => {
     if (!selectedEvent || !selectedRoute || !selectedPickup || !selectedTrip) {
       alert('Please complete all selection steps including the trip schedule.');
       return;
@@ -76,21 +106,18 @@ export default function CustomerEventsPage() {
     setSuccessMessage('');
 
     try {
-      const booking = await eventsApi.bookTrip({
+      // 🚫 Removed eventsApi.bookTrip() entirely! 
+      // Pass selection data directly to initializePayment. 
+      // The backend stores this inside Flutterwave's 'meta' payload and 
+      // will create the database records ONLY after payment verification succeeds.
+      const paymentResponse = await eventsApi.initializePayment({
         eventId: selectedEvent.id,
         routeId: selectedRoute.id,
         pickupPointId: selectedPickup.id,
         tripId: selectedTrip.id,
-        amountPaid: Number(selectedRoute.price),
-      });
-
-      const bookingId = booking?.id || booking?.data?.id;
-      if (!bookingId) {
-        throw new Error('Booking ID was not returned from the server.');
-      }
-
-      const paymentResponse = await eventsApi.initializePayment({
-        bookingId: bookingId,
+        amount: Number(selectedRoute.price),
+        email: 'customer@aviorego.com.ng',
+        name: 'Valued Customer',
       });
 
       const paymentLink = paymentResponse?.link || paymentResponse?.data?.link;
@@ -116,9 +143,19 @@ export default function CustomerEventsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black tracking-tight text-neutral-950">AviorèGo Events & Transit</h1>
-        <p className="text-sm text-neutral-500">Discover upcoming festivals, concerts, and secure your official transit bus seats.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-neutral-950">AviorèGo Events & Transit</h1>
+          <p className="text-sm text-neutral-500">Discover upcoming festivals, concerts, and secure your official transit bus seats.</p>
+        </div>
+        <button
+          onClick={() => fetchEvents(true)}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 self-start px-4 py-2 rounded-2xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold transition-all"
+        >
+          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+          {refreshing ? 'Refreshing...' : 'Refresh Schedules'}
+        </button>
       </div>
 
       {successMessage && !selectedEvent && (
@@ -127,7 +164,7 @@ export default function CustomerEventsPage() {
         </div>
       )}
 
-      {loading ? (
+      {loading && events.length === 0 ? (
         <div className="py-20 text-center text-neutral-400 font-mono text-sm">Loading active events...</div>
       ) : events.length === 0 ? (
         <div className="bg-neutral-50 border border-neutral-200 rounded-3xl p-12 text-center space-y-3">
@@ -151,7 +188,7 @@ export default function CustomerEventsPage() {
               </div>
 
               <button
-                onClick={() => setSelectedEvent(event)}
+                onClick={() => handleOpenEventModal(event)}
                 className="w-full bg-neutral-950 hover:bg-green-600 text-white font-bold py-3 rounded-2xl text-xs transition-colors shadow-sm"
               >
                 Select Bus Route & Book / Waitlist
@@ -161,7 +198,6 @@ export default function CustomerEventsPage() {
         </div>
       )}
 
-      {/* Booking Modal / Drawer with Waitlist Capability */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-lg rounded-3xl p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -188,7 +224,6 @@ export default function CustomerEventsPage() {
               </div>
             ) : (
               <>
-                {/* Step 1: Select Route */}
                 <div className="space-y-3">
                   <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">1. Select Travel Route</label>
                   <div className="space-y-2">
@@ -211,7 +246,6 @@ export default function CustomerEventsPage() {
                   </div>
                 </div>
 
-                {/* Step 2: Select Pickup Landmark */}
                 {selectedRoute && (
                   <div className="space-y-3">
                     <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">2. Select Pickup Landmark</label>
@@ -230,7 +264,6 @@ export default function CustomerEventsPage() {
                   </div>
                 )}
 
-                {/* Step 3: Select Trip Schedule OR Trigger Waitlist */}
                 {selectedPickup && (
                   <div className="space-y-3">
                     <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">3. Select Bus Trip Schedule</label>
@@ -275,7 +308,6 @@ export default function CustomerEventsPage() {
                   </div>
                 )}
 
-                {/* Proceed to Payment Sheet Button (Only if trips exist and selected) */}
                 {selectedRoute?.trips && selectedRoute.trips.length > 0 && (
                   <button
                     disabled={!selectedRoute || !selectedPickup || !selectedTrip}
@@ -291,7 +323,6 @@ export default function CustomerEventsPage() {
         </div>
       )}
 
-      {/* Payment Sheet Modal */}
       <EventPaymentSheet
         open={isPaymentSheetOpen}
         event={selectedEvent}

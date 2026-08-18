@@ -56,7 +56,7 @@ class RiderJobsService {
   /**
    * Check-in Passenger by QR Token
    */
-  async checkInPassenger(tripId: string, qrToken: string) {
+async checkInPassenger(tripId: string, qrToken: string) {
     const response = await api.post(
       '/events/check-in',
       {
@@ -67,7 +67,6 @@ class RiderJobsService {
 
     return response.data;
   }
-
   /**
    * Accept Job
    */

@@ -37,9 +37,25 @@ export const eventsApi = {
     return response.data;
   },
 
-  // Initialize payment for event bookings
-  initializePayment: async (data: { bookingId: string }) => {
+  // Initialize payment for event bookings or shipments
+  initializePayment: async (data: { 
+    bookingId?: string; 
+    shipmentId?: string; 
+    eventId?: string;
+    routeId?: string;
+    pickupPointId?: string;
+    tripId?: string;
+    amount?: number;
+    email: string; 
+    name?: string; 
+  }) => {
     const response = await api.post('/flutterwave/initialize', data);
+    return response.data;
+  },
+
+  // Verify and check-in passenger (for drivers, riders, and admins)
+  checkInPassenger: async (data: { qrToken: string; tripId?: string }) => {
+    const response = await api.post('/events/check-in', data);
     return response.data;
   },
 
@@ -50,6 +66,18 @@ export const eventsApi = {
     pickupPointId?: string | null;
   }) => {
     const response = await api.post('/events/waitlist', data);
+    return response.data;
+  },
+
+  // Get active trip details for the live map page
+  getActiveTripDetails: async (tripId: string) => {
+    const response = await api.get(`/events/trips/${tripId}/active-details`);
+    return response.data;
+  },
+
+  // Get passenger manifest for a specific trip
+  getTripManifest: async (tripId: string) => {
+    const response = await api.get(`/events/trips/${tripId}/manifest`);
     return response.data;
   },
 };
