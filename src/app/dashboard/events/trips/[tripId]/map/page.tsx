@@ -20,6 +20,7 @@ export default function TripLiveMapPage() {
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const userMarkerRef = useRef<any>(null);
+  const routeLineRef = useRef<any>(null);
 
   useEffect(() => {
     if (tripId) {
@@ -136,11 +137,15 @@ export default function TripLiveMapPage() {
     };
   }, [tripData]);
 
-  // Update or add user marker when userLocation changes
+  // Update or add user marker and routing line when userLocation changes
   useEffect(() => {
-    if (!mapRef.current || !userLocation) return;
+    if (!mapRef.current || !userLocation || !tripData) return;
 
-    import('leaflet').then((L) => {
+    const pickupPoint = tripData.pickupPoint || tripData.route?.pickupPoints?.[0];
+    const pickupLat = pickupPoint?.latitude ? Number(pickupPoint.latitude) : 6.5244;
+    const pickupLng = pickupPoint?.longitude ? Number(pickupPoint.longitude) : 3.3792;
+
+    import('leaflet').then(async (L) => {
       const userIcon = L.divIcon({
         className: 'custom-user-marker',
         html: `<div style="background-color: #9333ea; color: white; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></div>`,
@@ -156,11 +161,40 @@ export default function TripLiveMapPage() {
           .bindPopup('<b>You are here</b>');
       }
 
-      // If pickup point is available, compute distance again
-      const pickupPoint = tripData?.pickupPoint || tripData?.route?.pickupPoints?.[0];
+      // Compute distance update
       if (pickupPoint?.latitude && pickupPoint?.longitude) {
-        const dist = calculateDistance(userLocation.lat, userLocation.lng, Number(pickupPoint.latitude), Number(pickupPoint.longitude));
+        const dist = calculateDistance(userLocation.lat, userLocation.lng, pickupLat, pickupLng);
         setDistanceToPickup(dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`);
+      }
+
+      // Fetch and draw the navigation blue line from OSRM or fallback to straight line
+      let latlngs: [number, number][] = [
+        [userLocation.lat, userLocation.lng],
+        [pickupLat, pickupLng]
+      ];
+
+      try {
+        const res = await fetch(
+          `https://router.project-osrm.org/route/v1/driving/${userLocation.lng},${userLocation.lat};${pickupLng},${pickupLat}?overview=full&geometries=geojson`
+        );
+        const data = await res.json();
+        if (data.routes && data.routes[0]) {
+          latlngs = data.routes[0].geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
+        }
+      } catch (err) {
+        // Fallback to straight line if network routing fails
+        console.warn('OSRM routing fetch failed, falling back to direct polyline:', err);
+      }
+
+      if (routeLineRef.current) {
+        routeLineRef.current.setLatLngs(latlngs);
+      } else {
+        routeLineRef.current = L.polyline(latlngs, {
+          color: '#2563eb', // Aviorè Blue Line
+          weight: 5,
+          opacity: 0.8,
+          smoothFactor: 1
+        }).addTo(mapRef.current);
       }
     });
   }, [userLocation, tripData]);
