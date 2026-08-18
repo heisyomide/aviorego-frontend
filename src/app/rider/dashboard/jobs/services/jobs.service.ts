@@ -146,6 +146,11 @@ async checkInPassenger(tripId: string, qrToken: string) {
     return response.data;
   }
 
+  async advanceTripState(tripId: string, status: string) {
+    const response = await api.patch(`/event-trips/${tripId}/status`, { status });
+    return response.data;
+  }
+
   /**
    * Complete Delivery
    * Customer Timeline:

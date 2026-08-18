@@ -7,11 +7,10 @@ import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { io, Socket } from 'socket.io-client';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode } from 'html5-qrcode';
 import jobsService from '../../../services/jobs.service';
 import { useRiderTelemetry } from '../../../../hooks/useRiderTelemetry';
 
-// Socket URL helper
 const getSocketUrl = () => {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   if (typeof window !== 'undefined') {
@@ -26,7 +25,6 @@ const getSocketUrl = () => {
 
 let socket: Socket;
 
-// Injecting true Google Maps blue flashlight & breathing ring styles
 if (typeof window !== 'undefined') {
   const style = document.createElement('style');
   style.innerHTML = `
@@ -108,7 +106,7 @@ interface Booking {
 interface ActiveTripDetails {
   id: string;
   tripLeg: string;
-  status: string;
+  status: 'SCHEDULED' | 'BOARDING' | 'IN_TRANSIT' | 'ARRIVED' | 'COMPLETED' | 'CANCELLED';
   departureTime: string;
   arrivalTime: string;
   payout: number;
@@ -119,6 +117,12 @@ interface ActiveTripDetails {
     originLongitude?: number;
     destinationLat?: number;
     destinationLng?: number;
+    event?: {
+      title: string;
+      venue: string;
+      city: string;
+      state: string;
+    };
     pickupPoints: Array<{
       id: string;
       name: string;
@@ -151,13 +155,12 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
   const [verifying, setVerifying] = useState(false);
   const [lastCheckedIn, setLastCheckedIn] = useState<any>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [updatingState, setUpdatingState] = useState(false);
 
-  // Map Navigation & Telemetry State
   const [compassHeading, setCompassHeading] = useState<number>(0);
   const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
 
-  const isTripActive = true;
-  const { coords } = useRiderTelemetry(isTripActive);
+  const { coords } = useRiderTelemetry(true);
 
   const fetchTripDetails = useCallback(async () => {
     try {
@@ -175,7 +178,6 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
     fetchTripDetails();
   }, [fetchTripDetails]);
 
-  // Listen to physical device orientation for compass beam rotation
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleOrientation = (e: DeviceOrientationEvent) => {
@@ -186,7 +188,6 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
     return () => window.removeEventListener('deviceorientation', handleOrientation, true);
   }, []);
 
-  // Initialize Socket Connection
   useEffect(() => {
     socket = io(getSocketUrl(), {
       autoConnect: false,
@@ -197,51 +198,65 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
     };
   }, []);
 
-  // Stream true GPS telemetry coordinates to Backend Gateway for Attendees & Organizers
   const displayHeading = coords?.heading !== null && coords?.heading !== undefined ? coords.heading : compassHeading;
 
   useEffect(() => {
     if (!coords || !tripId || !socket) return;
-    if (!socket.connected) {
-      socket.connect();
-    }
+    if (!socket.connected) socket.connect();
     socket.emit('rider:updateLocation', {
-      tripId: tripId,
+      tripId,
       latitude: coords.latitude,
       longitude: coords.longitude,
       heading: displayHeading,
     });
   }, [coords, tripId, displayHeading]);
 
-  // QR Scanner Effect Lifecycle
+  // Robust HTML5 QR Code Scanner Lifecycle
   useEffect(() => {
     if (!isScannerOpen) return;
 
-    const scanner = new Html5QrcodeScanner(
-      "reader",
-      { fps: 10, qrbox: { width: 250, height: 250 } },
-      /* verbose= */ false
-    );
-
-    scanner.render(
-      (decodedText) => {
-        scanner.clear().catch(console.error);
-        setIsScannerOpen(false);
-        handleVerifyPassenger(decodedText);
-      },
-      () => {
-        // Ignore scan frame decode errors
-      }
-    );
+    let html5QrCode: Html5Qrcode | null = null;
+    const timer = setTimeout(() => {
+      html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+          if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+              setIsScannerOpen(false);
+              handleVerifyPassenger(decodedText);
+            }).catch(console.error);
+          }
+        },
+        () => {}
+      ).catch((err) => {
+        console.error("Camera start failed:", err);
+      });
+    }, 100);
 
     return () => {
-      scanner.clear().catch((error) => {
-        console.error("Failed to clear html5-qrcode scanner. ", error);
-      });
+      clearTimeout(timer);
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+      }
     };
   }, [isScannerOpen]);
 
-  // Determine Target Coordinates with robust parsing (handles string/number & alternate keys)
+  // Advance Trip State Handler (Backend Integration)
+  async function handleAdvanceState(nextStatus: 'SCHEDULED' | 'BOARDING' | 'IN_TRANSIT' | 'ARRIVED' | 'COMPLETED') {
+    try {
+      setUpdatingState(true);
+      await jobsService.advanceTripState(tripId, nextStatus);
+      await fetchTripDetails();
+      alert(`Trip status successfully updated to ${nextStatus}`);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to update trip state.');
+    } finally {
+      setUpdatingState(false);
+    }
+  }
+
   const nextPickup = trip?.route?.pickupPoints?.find(
     p => (p.latitude !== null && p.latitude !== undefined) || (p.lat !== null && p.lat !== undefined)
   );
@@ -255,7 +270,6 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
   const activeLat = coords?.latitude ?? trip?.route?.originLatitude ?? 6.4530;
   const activeLng = coords?.longitude ?? trip?.route?.originLongitude ?? 3.3958;
 
-  // Calculate OSRM Road Polyline
   useEffect(() => {
     if (!activeLat || !activeLng || !targetLat || !targetLng) return;
 
@@ -315,47 +329,37 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
     );
   }
 
+  const tripEvent = trip?.event || trip?.route?.event;
+  const currentStatus = trip?.status || 'SCHEDULED';
+
   return (
-    <div className="w-full h-[calc(100vh-5rem)] min-h-175 flex flex-col bg-neutral-950 rounded-3xl overflow-hidden shadow-2xl border border-neutral-800">
+    <div className="w-full h-[calc(100vh-5rem)] min-h-[700px] flex flex-col bg-neutral-950 rounded-3xl overflow-hidden shadow-2xl border border-neutral-800">
       
-      {/* =========================================================
-          TOP HALF (50%): LIVE LEAFLET MAP WITH GPS FLASHLIGHT BEAM
-          ========================================================= */}
+      {/* MAP VIEW WITH DETAILED ROAD TILES */}
       <div className="relative w-full h-1/2 bg-neutral-900 border-b border-neutral-800 overflow-hidden">
         
-        {/* Real-time Telemetry Diagnostic Card */}
-        <div className="absolute top-4 left-4 z-1000 bg-black/85 backdrop-blur-md px-3 py-2 rounded-lg text-[11px] font-mono border border-neutral-800 text-white flex flex-col gap-1 shadow-xl pointer-events-none">
+        <div className="absolute top-4 left-4 z-[1000] bg-black/85 backdrop-blur-md px-3 py-2 rounded-lg text-[11px] font-mono border border-neutral-800 text-white flex flex-col gap-1 shadow-xl pointer-events-none">
           <div className="flex items-center gap-1.5">
             <span className={`w-2 h-2 rounded-full ${coords ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
             <span className="font-bold">GPS: {coords ? 'LIVE SYNCED' : 'ACQUIRING...'}</span>
           </div>
-          <div>Lat: {coords?.latitude ? coords.latitude.toFixed(5) : activeLat.toFixed(5)}</div>
-          <div>Lng: {coords?.longitude ? coords.longitude.toFixed(5) : activeLng.toFixed(5)}</div>
+          <div>Lat: {activeLat.toFixed(5)} | Lng: {activeLng.toFixed(5)}</div>
           <div>Heading: {displayHeading}°</div>
-          <div>Target: {targetLat.toFixed(4)}, {targetLng.toFixed(4)}</div>
         </div>
 
-        {/* Floating Top Control Actions (Scan, Help) */}
-        <div className="absolute top-4 right-4 z-1000 flex items-center gap-2 pointer-events-auto">
+        <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2 pointer-events-auto">
           <button
             onClick={() => setIsScannerOpen(true)}
-            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs rounded-full shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs rounded-full shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
           >
             📷 Scan Ticket
           </button>
-          <button 
-            onClick={() => alert('Support / Dispatch Help')}
-            className="px-4 py-2 bg-white/90 backdrop-blur-md text-neutral-900 font-bold text-xs rounded-full shadow-lg hover:bg-white transition-all cursor-pointer border border-neutral-200"
-          >
-            Help
-          </button>
         </div>
 
-        {/* Leaflet Map Container */}
         <MapContainer center={[activeLat, activeLng]} zoom={15} zoomControl={false} className="w-full h-full z-0">
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; OpenStreetMap contributors'
           />
           <MapFocusUpdater center={[activeLat, activeLng]} />
 
@@ -367,49 +371,74 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
           <Marker position={[activeLat, activeLng]} icon={blueFlashlightIcon} />
         </MapContainer>
 
-        {/* Status Pill on Map */}
-        <div className="absolute bottom-4 left-4 z-1000 bg-neutral-950/85 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-neutral-800 flex items-center gap-2 shadow-lg">
+        <div className="absolute bottom-4 left-4 z-[1000] bg-neutral-950/85 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-neutral-800 flex items-center gap-2 shadow-lg">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-wider">
-            {trip?.status || 'BOARDING IN PROGRESS'}
+            STATUS: {currentStatus}
           </span>
         </div>
       </div>
 
-      {/* =========================================================
-          BOTTOM HALF (50%): SCROLLABLE INFORMATION & MANIFEST PANEL
-          ========================================================= */}
+      {/* MANIFEST & STATE CONTROL PANEL */}
       <div className="w-full h-1/2 bg-white text-neutral-900 overflow-y-auto p-6 space-y-5">
         
-        {/* Route Header & Payout */}
+        {/* Route Header & Correct Payout */}
         <div className="flex justify-between items-start pb-4 border-b border-neutral-100">
           <div>
-            <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-mono font-semibold block mb-0.5">Route Corridor & Schedule Lat/Lng</span>
+            <span className="text-[10px] text-neutral-400 uppercase tracking-wider font-mono font-semibold block mb-0.5">Route Corridor</span>
             <h2 className="text-xl font-black text-neutral-900 tracking-tight">
               {trip?.route?.originCity} ➔ {trip?.route?.destination}
             </h2>
           </div>
           <div className="text-right">
-            <span className="text-[10px] text-neutral-400 block uppercase font-mono font-semibold">Total Payout</span>
+            <span className="text-[10px] text-neutral-400 block uppercase font-mono font-semibold">Driver Payout</span>
             <span className="text-xl font-black text-emerald-600 font-mono">₦{trip?.payout?.toLocaleString() || '0'}</span>
           </div>
         </div>
 
-        {/* Progress / Step Indicator Bar */}
-        <div className="bg-neutral-50 px-4 py-3 rounded-2xl border border-neutral-200/60 space-y-2">
-          <div className="flex items-center justify-between text-[11px] font-mono text-neutral-500 font-medium">
-            <span className="text-emerald-600 font-bold">Station</span>
-            <span>Pickup</span>
-            <span>Transit</span>
-            <span>Destination</span>
+        {/* Interactive State Progression Controls */}
+        <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200 space-y-3">
+          <div className="flex justify-between items-center text-xs font-mono font-bold text-neutral-700 uppercase">
+            <span>Trip Lifecycle Workflow</span>
+            <span className="text-emerald-600">Current: {currentStatus}</span>
           </div>
-          <div className="relative flex items-center justify-between w-full">
-            <div className="absolute inset-x-0 h-1 bg-neutral-200 z-0" />
-            <div className="absolute left-0 h-1 bg-emerald-500 z-0 w-1/3" />
-            <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 z-10 border-2 border-white shadow-sm" />
-            <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 z-10 border-2 border-white shadow-sm" />
-            <div className="w-3.5 h-3.5 rounded-full bg-neutral-300 z-10 border-2 border-white shadow-sm" />
-            <div className="w-3.5 h-3.5 rounded-full bg-neutral-300 z-10 border-2 border-white shadow-sm" />
+          <div className="flex flex-wrap gap-2">
+            {currentStatus === 'SCHEDULED' && (
+              <button
+                onClick={() => handleAdvanceState('BOARDING')}
+                disabled={updatingState}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+              >
+                Start Boarding ➔
+              </button>
+            )}
+            {currentStatus === 'BOARDING' && (
+              <button
+                onClick={() => handleAdvanceState('IN_TRANSIT')}
+                disabled={updatingState}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+              >
+                Start Transit (Depart Station) ➔
+              </button>
+            )}
+            {currentStatus === 'IN_TRANSIT' && (
+              <button
+                onClick={() => handleAdvanceState('ARRIVED')}
+                disabled={updatingState}
+                className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+              >
+                Mark Arrived at Venue ➔
+              </button>
+            )}
+            {currentStatus === 'ARRIVED' && (
+              <button
+                onClick={() => handleAdvanceState('COMPLETED')}
+                disabled={updatingState}
+                className="px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-white rounded-xl text-xs font-bold font-mono transition-all cursor-pointer"
+              >
+                Complete Trip ➔
+              </button>
+            )}
           </div>
         </div>
 
@@ -441,24 +470,12 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
           )}
         </div>
 
-        {/* Event Assignment Info */}
-        {trip?.event && (
-          <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200 text-xs space-y-1">
-            <span className="text-[10px] font-mono text-neutral-400 uppercase font-bold">Event Assignment</span>
-            <h4 className="font-bold text-neutral-900 text-sm">{trip.event.title}</h4>
-            <p className="text-neutral-600">{trip.event.venue}, {trip.event.city}</p>
-          </div>
-        )}
-
         {/* Passenger Manifest Feed */}
         <div className="space-y-3 pt-2">
           <div className="flex justify-between items-center">
             <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider font-mono">
-              Passenger Manifest
+              Passenger Manifest ({trip?.bookings?.length || 0})
             </h4>
-            <span className="px-2.5 py-0.5 bg-neutral-100 border border-neutral-200 rounded-full text-[11px] font-mono font-semibold text-neutral-700">
-              {trip?.bookings?.length || 0} Booked
-            </span>
           </div>
 
           {!trip?.bookings || trip.bookings.length === 0 ? (
@@ -486,36 +503,9 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
           )}
         </div>
 
-        {/* Scheduled Stops Feed */}
-        <div className="space-y-3 pt-2 pb-6">
-          <h4 className="text-xs font-bold text-neutral-900 uppercase tracking-wider font-mono">
-            Scheduled Stops & Coordinates ({trip?.route?.pickupPoints?.length || 0})
-          </h4>
-          <div className="space-y-2">
-            {trip?.route?.pickupPoints?.map((point, index) => {
-              const pLat = point.latitude ?? point.lat;
-              const pLng = point.longitude ?? point.lng;
-              return (
-                <div key={point.id} className="bg-neutral-50 p-3.5 rounded-xl border border-neutral-200 space-y-1 text-xs">
-                  <div className="flex justify-between items-center text-[10px]">
-                    <span className="font-mono text-emerald-600 font-bold">Stop #{index + 1}</span>
-                    <span className="text-neutral-400 font-mono">
-                      {pLat && pLng ? `${Number(pLat).toFixed(4)}, ${Number(pLng).toFixed(4)}` : `Cap: ${point.maxCapacity}`}
-                    </span>
-                  </div>
-                  <h5 className="font-bold text-neutral-900">{point.name}</h5>
-                  <p className="text-neutral-600 text-[11px]">{point.address}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
       </div>
 
-      {/* =========================================================
-          QR SCANNER MODAL OVERLAY (WITH HTML5-QRCODE CAMERA STREAM)
-          ========================================================= */}
+      {/* QR SCANNER MODAL */}
       {isScannerOpen && (
         <div className="absolute inset-0 z-50 bg-neutral-950/80 backdrop-blur-md flex items-center justify-center p-6">
           <div className="bg-white border border-neutral-200 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-6 text-center text-neutral-900">
@@ -529,8 +519,7 @@ export default function ActiveEventTripPage({ params }: { params: Promise<{ trip
               </button>
             </div>
 
-            {/* Live Camera Stream Element */}
-            <div id="reader" className="w-full overflow-hidden rounded-2xl bg-neutral-900"></div>
+            <div id="reader" className="w-full h-64 overflow-hidden rounded-2xl bg-neutral-900"></div>
 
             <div className="space-y-3">
               <p className="text-xs text-neutral-500">Alternatively, enter ticket token manually:</p>
