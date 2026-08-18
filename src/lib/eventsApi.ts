@@ -12,7 +12,11 @@ export const eventsApi = {
     const response = await api.get(`/events/${eventId}`);
     return response.data;
   },
-
+// src/lib/eventsApi.ts (Excerpt)
+async getActiveEventTripDetails(tripId: string) {
+  const response = await api.get(`/events/organizer/trips/${tripId}`);
+  return response.data;
+},
   // Book a trip and generate a QR token
   bookTrip: async (bookingData: {
     eventId: string;
@@ -75,6 +79,8 @@ export const eventsApi = {
     const response = await api.get(`/events/trips/${tripId}/active-details`);
     return response.data;
   },
+
+
 
   // Get passenger manifest for a specific trip
   getTripManifest: async (tripId: string) => {

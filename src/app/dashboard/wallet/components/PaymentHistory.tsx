@@ -5,7 +5,6 @@ import type { PaymentDetails } from "../types";
 interface Props {
   payments: PaymentDetails[];
   onOpen: (paymentId: string) => void;
-
 }
 
 export default function PaymentHistory({
@@ -34,7 +33,7 @@ export default function PaymentHistory({
         </h3>
 
         <p className="mt-1 text-sm text-neutral-500">
-          Every successful payment processed through Aviorè Go.
+          Every successful payment processed through AVIORÈ Go.
         </p>
       </div>
 
@@ -88,8 +87,8 @@ export default function PaymentHistory({
                   </div>
                 </td>
 
-                <td className="px-6 py-5">
-                  {payment.shipment.trackingCode}
+                <td className="px-6 py-5 font-mono text-xs">
+                  {payment.shipment?.trackingCode ?? "N/A"}
                 </td>
 
                 <td className="px-6 py-5 capitalize">
@@ -121,7 +120,7 @@ export default function PaymentHistory({
                 <td className="px-6 py-5 text-right">
                   <button
                     onClick={() => onOpen(payment.id)}
-                    className="rounded-lg border px-3 py-2 text-xs font-semibold transition hover:bg-neutral-100"
+                    className="rounded-lg border px-3 py-2 text-xs font-semibold transition hover:bg-neutral-100 cursor-pointer"
                   >
                     View
                   </button>

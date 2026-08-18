@@ -31,7 +31,7 @@ const ROLE_CONFIGS: Record<string, { bg: string; icon: React.ReactNode; title: s
   SUPER_ADMIN: { bg: "bg-purple-600", icon: <ShieldCheck size={10} />, title: "Super Admin", dashboardPath: "/admin/dashboard", label: "Admin Portal" },
   RIDER: { bg: "bg-amber-500", icon: <Bike size={10} />, title: "Rider Partner", dashboardPath: "/rider/dashboard", label: "Rider Dashboard" },
   BUSINESS_OWNER: { bg: "bg-blue-600", icon: <Building2 size={10} />, title: "Business Partner", dashboardPath: "/business/dashboard", label: "Merchant Dashboard" },
-  ORGANIZER: { bg: "bg-orange-500", icon: <Users size={10} />, title: "Organizer", dashboardPath: "/organizer/dashboard", label: "Organizer Hub" },
+  ORGANIZER: { bg: "bg-orange-500", icon: <Users size={10} />, title: "Organizer", dashboardPath: "/events/dashboard", label: "Organizer Hub" },
   CUSTOMER: { bg: "bg-emerald-600", icon: <UserIcon size={10} />, title: "Customer", dashboardPath: "/dashboard", label: "Customer Dashboard" },
 };
 
