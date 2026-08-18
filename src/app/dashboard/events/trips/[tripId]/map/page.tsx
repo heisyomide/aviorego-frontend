@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ChevronLeft, Bus, User, Phone, ShieldCheck, Navigation, Clock, AlertCircle, MapPin } from 'lucide-react';
+import { ChevronLeft, Bus, User, Phone, ShieldCheck, Navigation, Clock, AlertCircle, MapPin, Compass } from 'lucide-react';
 import { eventsApi } from '@/src/lib/eventsApi';
 
 export default function TripLiveMapPage() {
@@ -13,9 +13,13 @@ export default function TripLiveMapPage() {
   const [tripData, setTripData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [distanceToPickup, setDistanceToPickup] = useState<string | null>(null);
+  const [locatingUser, setLocatingUser] = useState(false);
   
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const userMarkerRef = useRef<any>(null);
 
   useEffect(() => {
     if (tripId) {
@@ -23,20 +27,61 @@ export default function TripLiveMapPage() {
     }
   }, [tripId]);
 
+  // Request customer's current geolocation
+  const trackUserLocation = () => {
+    if (!navigator.geolocation) return;
+    setLocatingUser(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setUserLocation({ lat, lng });
+        setLocatingUser(false);
+
+        // Calculate distance to pickup if pickup coordinates exist
+        if (tripData) {
+          const pickupPoint = tripData.pickupPoint || tripData.route?.pickupPoints?.[0];
+          if (pickupPoint?.latitude && pickupPoint?.longitude) {
+            const dist = calculateDistance(lat, lng, Number(pickupPoint.latitude), Number(pickupPoint.longitude));
+            setDistanceToPickup(dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`);
+          }
+        }
+      },
+      (err) => {
+        console.warn('Geolocation access denied or unavailable:', err);
+        setLocatingUser(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  // Helper formula to compute distance in kilometers between two coordinates (Haversine formula)
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const deg2rad = (deg: number) => {
+    return deg * (Math.PI / 180);
+  };
+
   // Initialize Leaflet Map using pickup point coordinates
   useEffect(() => {
     if (!tripData || !mapContainerRef.current) return;
 
     const container = mapContainerRef.current;
 
-    // Extract latitude & longitude from the pickup point (matching the rider flow)
     const pickupPoint = tripData.pickupPoint || tripData.route?.pickupPoints?.[0];
     const pickupLat = pickupPoint?.latitude ? Number(pickupPoint.latitude) : 6.5244;
     const pickupLng = pickupPoint?.longitude ? Number(pickupPoint.longitude) : 3.3792;
 
-    // Load Leaflet dynamically on client side
     import('leaflet').then((L) => {
-      // Fix default marker icon issue in Next.js
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -73,13 +118,15 @@ export default function TripLiveMapPage() {
           iconAnchor: [18, 18],
         });
 
-        // Initially place the bus at the pickup point, moving towards destination as trip progresses
         L.marker([pickupLat, pickupLng], { icon: busIcon })
           .addTo(map)
           .bindPopup(`<b>Aviorè Transit Bus</b><br/>Status: En route from pickup.`)
           .openPopup();
       }
     });
+
+    // Automatically trigger user tracking on load
+    trackUserLocation();
 
     return () => {
       if (mapRef.current) {
@@ -88,6 +135,35 @@ export default function TripLiveMapPage() {
       }
     };
   }, [tripData]);
+
+  // Update or add user marker when userLocation changes
+  useEffect(() => {
+    if (!mapRef.current || !userLocation) return;
+
+    import('leaflet').then((L) => {
+      const userIcon = L.divIcon({
+        className: 'custom-user-marker',
+        html: `<div style="background-color: #9333ea; color: white; padding: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.2);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+
+      if (userMarkerRef.current) {
+        userMarkerRef.current.setLatLng([userLocation.lat, userLocation.lng]);
+      } else {
+        userMarkerRef.current = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon })
+          .addTo(mapRef.current)
+          .bindPopup('<b>You are here</b>');
+      }
+
+      // If pickup point is available, compute distance again
+      const pickupPoint = tripData?.pickupPoint || tripData?.route?.pickupPoints?.[0];
+      if (pickupPoint?.latitude && pickupPoint?.longitude) {
+        const dist = calculateDistance(userLocation.lat, userLocation.lng, Number(pickupPoint.latitude), Number(pickupPoint.longitude));
+        setDistanceToPickup(dist < 1 ? `${Math.round(dist * 1000)}m` : `${dist.toFixed(1)}km`);
+      }
+    });
+  }, [userLocation, tripData]);
 
   const fetchActiveTripDetails = async () => {
     try {
@@ -166,13 +242,25 @@ export default function TripLiveMapPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
         {/* Interactive Map Display Box (2 Columns) */}
-        <div className="md:col-span-2 rounded-3xl border border-neutral-200 bg-white overflow-hidden shadow-sm flex flex-col h-[450px] relative">
+        <div className="md:col-span-2 rounded-3xl border border-neutral-200 bg-white overflow-hidden shadow-sm flex flex-col h-112.5 relative">
           <div ref={mapContainerRef} className="absolute inset-0 z-10 w-full h-full" />
           
           {/* Floating Live Badge Overlay */}
           <div className="absolute top-4 left-4 z-20 bg-white/95 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-neutral-200 text-xs font-bold text-neutral-900 shadow-md flex items-center gap-2">
             <Navigation className="h-3.5 w-3.5 text-green-600 animate-pulse" />
             <span>Tracking Pickup to Destination</span>
+          </div>
+
+          {/* Floating Geolocation Button / Distance Tag */}
+          <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2">
+            <button
+              onClick={trackUserLocation}
+              disabled={locatingUser}
+              className="bg-white/95 hover:bg-white backdrop-blur-md px-3.5 py-2 rounded-2xl border border-neutral-200 text-xs font-bold text-neutral-900 shadow-md flex items-center gap-2 transition"
+            >
+              <Compass className={`h-4 w-4 text-purple-600 ${locatingUser ? 'animate-spin' : ''}`} />
+              <span>{locatingUser ? 'Locating...' : distanceToPickup ? `${distanceToPickup} to pickup` : 'Find Pickup'}</span>
+            </button>
           </div>
         </div>
 
@@ -185,10 +273,21 @@ export default function TripLiveMapPage() {
             <div>
               <p className="text-sm font-black text-neutral-950">{route?.originCity} ➔ {route?.destination}</p>
               {pickupPoint && (
-                <p className="text-xs text-neutral-600 flex items-center gap-1.5 mt-2 bg-neutral-50 p-2.5 rounded-xl border border-neutral-200">
-                  <MapPin className="h-4 w-4 text-blue-600 shrink-0" />
-                  <span><strong className="text-neutral-900">Pickup:</strong> {pickupPoint.name}</span>
-                </p>
+                <div className="mt-2 space-y-1.5 bg-neutral-50 p-3 rounded-2xl border border-neutral-200">
+                  <p className="text-xs text-neutral-700 flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-blue-600 shrink-0" />
+                    <span><strong className="text-neutral-900">{pickupPoint.name}</strong></span>
+                  </p>
+                  {pickupPoint.address && (
+                    <p className="text-[11px] text-neutral-500 pl-5.5">{pickupPoint.address}</p>
+                  )}
+                  {distanceToPickup && (
+                    <div className="pt-2 mt-2 border-t border-neutral-200 flex items-center justify-between text-[11px] font-mono">
+                      <span className="text-neutral-400">Distance to station:</span>
+                      <span className="font-bold text-purple-600">{distanceToPickup}</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             <div className="pt-2 border-t border-neutral-100 flex items-center justify-between text-xs font-mono">
