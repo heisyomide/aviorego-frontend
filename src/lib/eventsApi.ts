@@ -45,6 +45,7 @@ export const eventsApi = {
     routeId?: string;
     pickupPointId?: string;
     tripId?: string;
+    tripType?: string; // <--- Added here
     amount?: number;
     email: string; 
     name?: string; 

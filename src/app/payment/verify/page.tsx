@@ -4,7 +4,6 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
-// 1. Interactive verification sub-component using searchParams
 function PaymentVerifyContent() {
   const router = useRouter();
   const params = useSearchParams();
@@ -39,18 +38,21 @@ function PaymentVerifyContent() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message);
+        throw new Error(result.message || 'Verification failed.');
       }
 
       setStatus('success');
-      setMessage('Payment verified successfully.');
+      setMessage('Payment verified successfully. Redirecting...');
+
+      // Smart routing: Check the transaction metadata or route based on your flow
+      // Defaulting to events dashboard for event transit tickets, fallback to shipments
+      const redirectPath = result?.meta?.eventId ? '/dashboard/events' : '/dashboard/shipment';
 
       setTimeout(() => {
-        router.replace('/dashboard/shipment');
+        router.replace(redirectPath);
       }, 2500);
     } catch (err: any) {
       console.error(err);
-
       setStatus('failed');
       setMessage(err.message || 'Verification failed.');
     }
@@ -81,8 +83,8 @@ function PaymentVerifyContent() {
           <p className="mt-2 text-gray-500">{message}</p>
 
           <button
-            onClick={() => router.push('/dashboard/shipments')}
-            className="mt-6 rounded-lg bg-black px-6 py-3 text-white"
+            onClick={() => router.push('/dashboard/shipment')}
+            className="mt-6 rounded-lg bg-black px-6 py-3 text-white transition-colors hover:bg-gray-800"
           >
             Back to Dashboard
           </button>
@@ -92,16 +94,17 @@ function PaymentVerifyContent() {
   );
 }
 
-// 2. Main layout export wrapping content in Suspense for static pre-rendering compliance
 export default function PaymentVerifyPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <Suspense fallback={
-        <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg text-center">
-          <Loader2 className="mx-auto h-16 w-16 animate-spin text-blue-600" />
-          <h2 className="mt-5 text-2xl font-bold">Loading Page...</h2>
-        </div>
-      }>
+      <Suspense
+        fallback={
+          <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg text-center">
+            <Loader2 className="mx-auto h-16 w-16 animate-spin text-blue-600" />
+            <h2 className="mt-5 text-2xl font-bold">Loading Page...</h2>
+          </div>
+        }
+      >
         <PaymentVerifyContent />
       </Suspense>
     </div>

@@ -14,6 +14,9 @@ export default function CustomerEventsPage() {
   const [selectedPickup, setSelectedPickup] = useState<any>(null);
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   
+  // New Trip Type state: 'outbound' | 'return' | 'round-trip'
+  const [selectedTripType, setSelectedTripType] = useState<string>('outbound');
+  
   // Sheet & payment states
   const [isPaymentSheetOpen, setIsPaymentSheetOpen] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -31,10 +34,11 @@ export default function CustomerEventsPage() {
     try {
       if (isManualRefresh) setRefreshing(true);
       const data = await eventsApi.getEvents();
-      setEvents(data);
+      const eventList = Array.isArray(data) ? data : [];
+      setEvents(eventList);
 
       if (selectedEvent) {
-        const updatedCurrentEvent = data.find((ev: any) => ev.id === selectedEvent.id);
+        const updatedCurrentEvent = eventList.find((ev: any) => ev.id === selectedEvent.id);
         if (updatedCurrentEvent) {
           setSelectedEvent(updatedCurrentEvent);
           
@@ -42,12 +46,20 @@ export default function CustomerEventsPage() {
             const updatedRoute = updatedCurrentEvent.routes?.find((r: any) => r.id === selectedRoute.id);
             if (updatedRoute) {
               setSelectedRoute(updatedRoute);
+              
+              if (selectedTrip) {
+                const updatedTrip = updatedRoute.trips?.find((t: any) => t.id === selectedTrip.id);
+                if (updatedTrip) {
+                  setSelectedTrip(updatedTrip);
+                }
+              }
             }
           }
         }
       }
     } catch (error) {
       console.error('Failed to load events:', error);
+      setEvents([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -58,14 +70,29 @@ export default function CustomerEventsPage() {
     setLoading(true);
     try {
       const data = await eventsApi.getEvents();
-      setEvents(data);
-      const freshEventData = data.find((ev: any) => ev.id === event.id) || event;
+      const eventList = Array.isArray(data) ? data : [];
+      setEvents(eventList);
+      const freshEventData = eventList.find((ev: any) => ev.id === event.id) || event;
       setSelectedEvent(freshEventData);
     } catch (error) {
       setSelectedEvent(event);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate dynamic fare directly from the selected trip's pricing fields
+  const calculateTotalFare = () => {
+    if (!selectedTrip) return 0;
+
+    const oneWayFare = Number(selectedTrip.customerOneWayFare || 0);
+    const roundTripFare = Number(selectedTrip.customerRoundTripFare || (oneWayFare * 2));
+
+    if (selectedTripType === 'round-trip') {
+      return roundTripFare;
+    }
+    // Outbound or Return uses the one-way fare
+    return oneWayFare;
   };
 
   const handleOpenPaymentSheet = () => {
@@ -96,7 +123,7 @@ export default function CustomerEventsPage() {
     }
   };
 
-const handleFlutterwaveCheckout = async () => {
+  const handleFlutterwaveCheckout = async () => {
     if (!selectedEvent || !selectedRoute || !selectedPickup || !selectedTrip) {
       alert('Please complete all selection steps including the trip schedule.');
       return;
@@ -106,16 +133,15 @@ const handleFlutterwaveCheckout = async () => {
     setSuccessMessage('');
 
     try {
-      // 🚫 Removed eventsApi.bookTrip() entirely! 
-      // Pass selection data directly to initializePayment. 
-      // The backend stores this inside Flutterwave's 'meta' payload and 
-      // will create the database records ONLY after payment verification succeeds.
+      const totalAmount = calculateTotalFare();
+
       const paymentResponse = await eventsApi.initializePayment({
         eventId: selectedEvent.id,
         routeId: selectedRoute.id,
         pickupPointId: selectedPickup.id,
         tripId: selectedTrip.id,
-        amount: Number(selectedRoute.price),
+        tripType: selectedTripType, // Passing outbound / return / round-trip
+        amount: totalAmount,
         email: 'customer@aviorego.com.ng',
         name: 'Valued Customer',
       });
@@ -137,6 +163,7 @@ const handleFlutterwaveCheckout = async () => {
     setSelectedRoute(null);
     setSelectedPickup(null);
     setSelectedTrip(null);
+    setSelectedTripType('outbound');
     setWaitlistSuccess(false);
     setSuccessMessage('');
   };
@@ -224,8 +251,30 @@ const handleFlutterwaveCheckout = async () => {
               </div>
             ) : (
               <>
+                {/* 1. Trip Type Selection */}
                 <div className="space-y-3">
-                  <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">1. Select Travel Route</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">1. Select Trip Type</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'outbound', label: 'Outbound (One-way)' },
+                      { id: 'return', label: 'Return (One-way)' },
+                      { id: 'round-trip', label: 'Round Trip' },
+                    ].map((type) => (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => setSelectedTripType(type.id)}
+                        className={`p-3 rounded-2xl border text-xs font-bold transition-all text-center ${selectedTripType === type.id ? 'border-green-600 bg-green-50 text-green-900 shadow-sm' : 'border-neutral-200 text-neutral-700 hover:border-neutral-300'}`}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Select Travel Route */}
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">2. Select Travel Route</label>
                   <div className="space-y-2">
                     {selectedEvent.routes?.map((route: any) => (
                       <div
@@ -240,15 +289,15 @@ const handleFlutterwaveCheckout = async () => {
                         <div>
                           <p className="text-xs font-bold text-neutral-950">{route.originCity} ➔ {route.destination}</p>
                         </div>
-                        <span className="text-xs font-mono font-black text-green-600">₦{Number(route.price || 0).toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
+                {/* 3. Select Pickup Landmark */}
                 {selectedRoute && (
                   <div className="space-y-3">
-                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">2. Select Pickup Landmark</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">3. Select Pickup Landmark</label>
                     <div className="space-y-2">
                       {selectedRoute.pickupPoints?.map((pickup: any) => (
                         <div
@@ -264,9 +313,10 @@ const handleFlutterwaveCheckout = async () => {
                   </div>
                 )}
 
+                {/* 4. Select Bus Trip Schedule */}
                 {selectedPickup && (
                   <div className="space-y-3">
-                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">3. Select Bus Trip Schedule</label>
+                    <label className="text-xs font-bold uppercase tracking-wider text-neutral-500 font-mono">4. Select Bus Trip Schedule & Fare</label>
                     <div className="space-y-2">
                       {(!selectedRoute.trips || selectedRoute.trips.length === 0) ? (
                         <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
@@ -291,18 +341,34 @@ const handleFlutterwaveCheckout = async () => {
                           </button>
                         </div>
                       ) : (
-                        selectedRoute.trips.map((trip: any) => (
-                          <div
-                            key={trip.id}
-                            onClick={() => setSelectedTrip(trip)}
-                            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${selectedTrip?.id === trip.id ? 'border-green-600 bg-green-50/50' : 'border-neutral-200'}`}
-                          >
-                            <div>
-                              <p className="text-xs font-bold text-neutral-950">Departure: {new Date(trip.departureTime).toLocaleString()}</p>
-                              <p className="text-[10px] text-neutral-500">Vehicle: {trip.vehicle ? `${trip.vehicle.make} ${trip.vehicle.model} (${trip.vehicle.plateNumber})` : 'Assigned Bus'}</p>
+                        selectedRoute.trips.map((trip: any) => {
+                          const tripFare = selectedTripType === 'round-trip'
+                            ? Number(trip.customerRoundTripFare || (trip.customerOneWayFare * 2))
+                            : Number(trip.customerOneWayFare || 0);
+
+                          return (
+                            <div
+                              key={trip.id}
+                              onClick={() => setSelectedTrip(trip)}
+                              className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${selectedTrip?.id === trip.id ? 'border-green-600 bg-green-50/50' : 'border-neutral-200'}`}
+                            >
+                              <div>
+                                <p className="text-xs font-bold text-neutral-950">Departure: {new Date(trip.departureTime).toLocaleString()}</p>
+                                <p className="text-[10px] text-neutral-500 mt-0.5">
+                                  Type: {trip.tripLeg} | Status: <span className="font-semibold uppercase">{trip.status}</span>
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs font-mono font-black text-green-600">
+                                  ₦{tripFare.toLocaleString()}
+                                </span>
+                                <p className="text-[9px] text-neutral-400">
+                                  {selectedTripType === 'round-trip' ? 'Round Trip Fare' : 'One-way Fare'}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   </div>
@@ -312,9 +378,14 @@ const handleFlutterwaveCheckout = async () => {
                   <button
                     disabled={!selectedRoute || !selectedPickup || !selectedTrip}
                     onClick={handleOpenPaymentSheet}
-                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-bold py-3.5 rounded-2xl text-xs transition-colors shadow-md"
+                    className="w-full bg-green-600 hover:bg-green-700 disabled:bg-neutral-200 disabled:text-neutral-400 text-white font-bold py-3.5 rounded-2xl text-xs transition-colors shadow-md flex items-center justify-between px-6"
                   >
-                    {selectedTrip ? `Proceed to Pay ₦${Number(selectedRoute.price).toLocaleString()}` : 'Complete Selections to Continue'}
+                    <span>{selectedTrip ? 'Proceed to Payment' : 'Complete Selections to Continue'}</span>
+                    {selectedTrip && (
+                      <span className="font-mono font-black text-sm">
+                        ₦{calculateTotalFare().toLocaleString()}
+                      </span>
+                    )}
                   </button>
                 )}
               </>
@@ -328,6 +399,8 @@ const handleFlutterwaveCheckout = async () => {
         event={selectedEvent}
         route={selectedRoute}
         pickup={selectedPickup}
+        tripType={selectedTripType}
+        totalAmount={calculateTotalFare()}
         loading={paymentLoading}
         onClose={() => setIsPaymentSheetOpen(false)}
         onFlutterwavePay={handleFlutterwaveCheckout}

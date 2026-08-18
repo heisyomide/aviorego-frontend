@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/src/lib/api';
-import { Bus, X, MapPin } from 'lucide-react';
+import { Bus, X, MapPin, DollarSign } from 'lucide-react';
 
 interface EventSchedulerModalProps {
   isOpen: boolean;
@@ -30,12 +30,15 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
 
   // Form State
   const [selectedRouteId, setSelectedRouteId] = useState('');
-  const [tripLeg, setTripLeg] = useState<'OUTBOUND' | 'RETURN'>('OUTBOUND');
+  const [tripLeg, setTripLeg] = useState<'OUTBOUND' | 'RETURN' | 'ROUND_TRIP'>('OUTBOUND');
   const [busCount, setBusCount] = useState<number>(1);
   const [departureTime, setDepartureTime] = useState('');
   const [arrivalTime, setArrivalTime] = useState('');
 
-  // Coordinate Mapping State for Selected Route/Pickup Points
+  // Financial & Coordinate State
+  const [customerOneWayFare, setCustomerOneWayFare] = useState<string>('');
+  const [customerRoundTripFare, setCustomerRoundTripFare] = useState<string>('');
+  const [driverPayout, setDriverPayout] = useState<string>('');
   const [destinationLat, setDestinationLat] = useState<string>('');
   const [destinationLng, setDestinationLng] = useState<string>('');
   const [pickupCoordinates, setPickupCoordinates] = useState<Record<string, { lat: string; lng: string }>>({});
@@ -52,7 +55,14 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
       setDepartureTime(formattedStart);
       setArrivalTime(formattedEnd);
 
-      // Initialize coordinates from the selected route if available
+      // Initialize financials and coordinates from the selected route
+      const oneWay = defaultRoute.customerOneWayFare ?? defaultRoute.price ?? defaultRoute.fare ?? '';
+      const roundTrip = defaultRoute.customerRoundTripFare ?? '';
+      const payout = defaultRoute.driverPayout ?? '';
+
+      setCustomerOneWayFare(oneWay !== null && oneWay !== undefined ? String(oneWay) : '');
+      setCustomerRoundTripFare(roundTrip !== null && roundTrip !== undefined ? String(roundTrip) : '');
+      setDriverPayout(payout !== null && payout !== undefined ? String(payout) : '');
       setDestinationLat(defaultRoute.destinationLat !== null && defaultRoute.destinationLat !== undefined ? String(defaultRoute.destinationLat) : '');
       setDestinationLng(defaultRoute.destinationLng !== null && defaultRoute.destinationLng !== undefined ? String(defaultRoute.destinationLng) : '');
 
@@ -67,11 +77,18 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
     }
   }, [event]);
 
-  // Handle Route Selection Change to update coordinate inputs dynamically
+  // Handle Route Selection Change to update financial and coordinate inputs dynamically
   const handleRouteChange = (routeId: string) => {
     setSelectedRouteId(routeId);
     const route = event?.routes?.find((r: any) => r.id === routeId);
     if (route) {
+      const oneWay = route.customerOneWayFare ?? route.price ?? route.fare ?? '';
+      const roundTrip = route.customerRoundTripFare ?? '';
+      const payout = route.driverPayout ?? '';
+
+      setCustomerOneWayFare(oneWay !== null && oneWay !== undefined ? String(oneWay) : '');
+      setCustomerRoundTripFare(roundTrip !== null && roundTrip !== undefined ? String(roundTrip) : '');
+      setDriverPayout(payout !== null && payout !== undefined ? String(payout) : '');
       setDestinationLat(route.destinationLat !== null && route.destinationLat !== undefined ? String(route.destinationLat) : '');
       setDestinationLng(route.destinationLng !== null && route.destinationLng !== undefined ? String(route.destinationLng) : '');
 
@@ -96,16 +113,20 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
     }));
   };
 
-  const handleTripLegChange = (newLeg: 'OUTBOUND' | 'RETURN') => {
+  const handleTripLegChange = (newLeg: 'OUTBOUND' | 'RETURN' | 'ROUND_TRIP') => {
     setTripLeg(newLeg);
     if (!event) return;
 
     if (newLeg === 'OUTBOUND') {
       setDepartureTime(formatForDatetimeLocal(event.startDate));
       setArrivalTime(formatForDatetimeLocal(event.endDate || event.startDate));
-    } else {
+    } else if (newLeg === 'RETURN') {
       setDepartureTime(formatForDatetimeLocal(event.endDate || event.startDate));
       setArrivalTime(formatForDatetimeLocal(event.startDate));
+    } else {
+      // ROUND_TRIP defaults to outbound start window
+      setDepartureTime(formatForDatetimeLocal(event.startDate));
+      setArrivalTime(formatForDatetimeLocal(event.endDate || event.startDate));
     }
   };
 
@@ -119,8 +140,11 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
     try {
       setSubmitting(true);
 
-      // 1. Save / Update Route and Pickup Point Coordinates first via Admin Patch Endpoint
+      // 1. Save / Update Route Financials (One-Way Fare, Round-Trip Fare, Driver Payout) and GPS Coordinates
       const routePayload = {
+        customerOneWayFare: customerOneWayFare ? parseFloat(customerOneWayFare) : null,
+        customerRoundTripFare: customerRoundTripFare ? parseFloat(customerRoundTripFare) : null,
+        driverPayout: driverPayout ? parseFloat(driverPayout) : null,
         destinationLat: destinationLat ? parseFloat(destinationLat) : null,
         destinationLng: destinationLng ? parseFloat(destinationLng) : null,
         pickupPoints: Object.entries(pickupCoordinates).map(([id, coords]) => ({
@@ -130,25 +154,25 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
         })),
       };
 
-      await api.patch(`/admin/${selectedRouteId}/coordinates`, routePayload).catch(() => {
-        // Fallback or secondary pattern if endpoint route differs slightly
-        return api.patch(`/admin/routes/${selectedRouteId}`, routePayload);
-      });
+   await api.patch(`/admin/${selectedRouteId}/coordinates`, routePayload);
 
-      // 2. Loop to create the specified number of individual bus trips matching CreateTripDto exactly
+      // 2. Loop to create the specified number of individual bus trips with the selected tripLeg and fares
       for (let i = 0; i < busCount; i++) {
         await api.post('/admin/trips', {
           routeId: selectedRouteId,
           tripLeg,
           departureTime: new Date(departureTime).toISOString(),
           arrivalTime: new Date(arrivalTime).toISOString(),
+          customerOneWayFare: customerOneWayFare ? parseFloat(customerOneWayFare) : null,
+          customerRoundTripFare: customerRoundTripFare ? parseFloat(customerRoundTripFare) : null,
+          driverPayout: driverPayout ? parseFloat(driverPayout) : null,
         });
       }
 
-      alert(`Successfully updated route GPS coordinates & scheduled ${busCount} bus slot(s)!`);
+      alert(`Successfully updated route pricing, payouts, GPS coordinates & scheduled ${busCount} bus slot(s)!`);
       onClose();
     } catch (err: any) {
-      console.error('Error configuring route coordinates or fleet schedule:', err?.response?.data || err);
+      console.error('Error configuring route pricing or fleet schedule:', err?.response?.data || err);
       const serverMessage = err?.response?.data?.message;
       const errorMessage = Array.isArray(serverMessage) 
         ? serverMessage.join(', ') 
@@ -169,9 +193,9 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-800/80 pb-4">
           <div>
-            <h3 className="text-sm font-bold font-mono uppercase tracking-tight text-white">Configure Fleet, Maps & GPS Coordinates</h3>
+            <h3 className="text-sm font-bold font-mono uppercase tracking-tight text-white">Configure Fleet, Pricing & GPS Coordinates</h3>
             <p className="text-[11px] text-neutral-400 font-mono mt-0.5">
-              Pin exact destination coordinates and boarding points for rider and customer live tracking maps
+              Set one-way and round-trip fares, driver payouts, destination coordinates, and boarding points
             </p>
           </div>
           <button
@@ -206,10 +230,58 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
               >
                 {event.routes?.map((r: any) => (
                   <option key={r.id} value={r.id}>
-                    {r.originCity} ➔ {r.destination} (₦{r.price?.toLocaleString()})
+                    {r.originCity} ➔ {r.destination} (₦{(r.customerOneWayFare || r.price || r.fare || 0).toLocaleString()})
                   </option>
                 ))}
               </select>
+            </div>
+
+            {/* Financial Configuration Section (One-Way Fare, Round-Trip Fare & Driver Payout) */}
+            <div className="space-y-4 bg-neutral-950/60 p-4 rounded-2xl border border-neutral-800/80">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400 uppercase">
+                <DollarSign className="h-4 w-4" /> Route Financials & Unit Pricing
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t border-neutral-800/60">
+                <div>
+                  <label className="block text-[10px] text-neutral-400 uppercase mb-1 font-bold">One-Way Fare (₦)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    placeholder="e.g. 5000"
+                    value={customerOneWayFare}
+                    onChange={(e) => setCustomerOneWayFare(e.target.value)}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-emerald-500"
+                  />
+                  <span className="text-[9px] text-neutral-500 mt-1 block">Single trip seat price</span>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-neutral-400 uppercase mb-1 font-bold">Round-Trip Fare (₦)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    placeholder="e.g. 9000"
+                    value={customerRoundTripFare}
+                    onChange={(e) => setCustomerRoundTripFare(e.target.value)}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-emerald-500"
+                  />
+                  <span className="text-[9px] text-neutral-500 mt-1 block">Both ways seat price</span>
+                </div>
+                <div>
+                  <label className="block text-[10px] text-neutral-400 uppercase mb-1 font-bold">Driver Payout (₦)</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    placeholder="e.g. 3500"
+                    value={driverPayout}
+                    onChange={(e) => setDriverPayout(e.target.value)}
+                    className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-2.5 text-xs text-white outline-none focus:border-emerald-500"
+                  />
+                  <span className="text-[9px] text-neutral-500 mt-1 block">Driver compensation</span>
+                </div>
+              </div>
             </div>
 
             {/* GPS Coordinates Setup Section */}
@@ -294,11 +366,12 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
                 <label className="block text-xs font-bold text-neutral-400 uppercase">Trip Leg</label>
                 <select
                   value={tripLeg}
-                  onChange={(e) => handleTripLegChange(e.target.value as 'OUTBOUND' | 'RETURN')}
+                  onChange={(e) => handleTripLegChange(e.target.value as 'OUTBOUND' | 'RETURN' | 'ROUND_TRIP')}
                   className="w-full bg-neutral-950 border border-neutral-800 rounded-xl p-3 text-xs text-white outline-none focus:border-emerald-500 transition"
                 >
                   <option value="OUTBOUND">Outbound (To Event)</option>
                   <option value="RETURN">Return (Back from Event)</option>
+                  <option value="ROUND_TRIP">Round Trip (Both Ways)</option>
                 </select>
               </div>
               <div className="space-y-1.5">
@@ -360,7 +433,7 @@ export default function EventSchedulerModal({ isOpen, onClose, event }: EventSch
                 disabled={submitting}
                 className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 rounded-xl font-bold text-xs transition shadow-lg disabled:opacity-50"
               >
-                {submitting ? 'Calibrating Maps & Allocating...' : 'Save GPS Coordinates & Open Slots'}
+                {submitting ? 'Saving Fares & Allocating...' : 'Save Fares, Payout & Open Slots'}
               </button>
             </div>
           </form>

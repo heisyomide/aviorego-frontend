@@ -7,6 +7,8 @@ interface EventPaymentSheetProps {
   event: any;
   route: any;
   pickup: any;
+  tripType: string;
+  totalAmount: number;
   loading: boolean;
   onClose: () => void;
   onFlutterwavePay: () => Promise<void>;
@@ -17,13 +19,25 @@ export default function EventPaymentSheet({
   event,
   route,
   pickup,
+  tripType,
+  totalAmount,
   loading,
   onClose,
   onFlutterwavePay,
 }: EventPaymentSheetProps) {
   if (!open || !event || !route || !pickup) return null;
 
-  const price = Number(route.price || 0);
+  const formatTripTypeLabel = (type: string) => {
+    switch (type) {
+      case 'round-trip':
+        return 'Round Trip';
+      case 'return':
+        return 'Return (One-way)';
+      case 'outbound':
+      default:
+        return 'Outbound (One-way)';
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
@@ -45,13 +59,17 @@ export default function EventPaymentSheet({
             <span className="font-medium text-neutral-900">{route.originCity} ➔ {route.destination}</span>
           </div>
           <div className="flex justify-between">
+            <span className="text-neutral-500">Trip Type</span>
+            <span className="font-medium text-neutral-900">{formatTripTypeLabel(tripType)}</span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-neutral-500">Pickup Landmark</span>
             <span className="font-medium text-neutral-900 text-right max-w-[200px] truncate">{pickup.name}</span>
           </div>
           <hr className="my-2 border-neutral-200" />
           <div className="flex justify-between text-xl font-black">
             <span className="text-neutral-950">Total Fare</span>
-            <span className="text-green-600">₦{price.toLocaleString()}</span>
+            <span className="text-green-600">₦{totalAmount.toLocaleString()}</span>
           </div>
         </div>
 
@@ -66,7 +84,7 @@ export default function EventPaymentSheet({
               Initializing Flutterwave...
             </>
           ) : (
-            `Pay ₦${price.toLocaleString()} Securely`
+            `Pay ₦${totalAmount.toLocaleString()} Securely`
           )}
         </button>
 
