@@ -35,7 +35,7 @@ function PaymentVerifyContent() {
         },
       );
 
-      const result = await response.json();
+const result = await response.json();
 
       if (!response.ok) {
         throw new Error(result.message || 'Verification failed.');
@@ -44,9 +44,10 @@ function PaymentVerifyContent() {
       setStatus('success');
       setMessage('Payment verified successfully. Redirecting...');
 
-      // Smart routing: Check the transaction metadata or route based on your flow
-      // Defaulting to events dashboard for event transit tickets, fallback to shipments
-      const redirectPath = result?.meta?.eventId ? '/dashboard/events' : '/dashboard/shipment';
+      // Fix: Inspect the backend verification return payload or check URL params/meta safely
+      // Assuming your backend returns what was processed or you check metadata safely:
+      const meta = result?.meta || {};
+      const redirectPath = meta.eventId ? '/dashboard/events' : '/dashboard/shipment';
 
       setTimeout(() => {
         router.replace(redirectPath);
