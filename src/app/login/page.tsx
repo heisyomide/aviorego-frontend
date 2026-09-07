@@ -1,18 +1,48 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { api } from '../../lib/api'; // Adjust path based on your structure
-import { useAuth } from '../../context/AuthContext'; // 🌟 Added Auth Context hook import
+import { api } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 
-// 1. Move the interactive login form elements here so they can safely read query params
+const getRedirectUrl = (user: { role: string; status?: string }): string => {
+  switch (user.role) {
+    case 'CUSTOMER':
+      return '/dashboard';
+    case 'RIDER':
+      return user.status === 'PENDING_VERIFICATION' || user.status === 'PENDING'
+        ? '/rider/onboarding'
+        : '/rider/dashboard';
+    case 'MERCHANT':
+      return user.status === 'PENDING_VERIFICATION'
+        ? '/merchant/onboarding'
+        : '/merchant/dashboard';
+    case 'ORGANIZER':
+      return user.status === 'PENDING_VERIFICATION'
+        ? '/organizer/onboarding'
+        : '/organizer/dashboard';
+    case 'ADMIN':
+    case 'SUPER_ADMIN':
+      return '/admin/dashboard';
+    default:
+      return '/dashboard';
+  }
+};
+
+const OnboardingLinks = [
+  { href: '/customer-onboarding', label: 'Customer', iconPath: 'M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z' },
+  { href: '/apply', label: 'Rider', iconPath: 'M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12' },
+  { href: '/merchant-signup', label: 'Merchant', iconPath: 'M13.5 21v-7.5a.75.75 0 01.75-.75h3a.75.75 0 01.75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349m-16.5 11.65V9.35m0 0a3.001 3.001 0 003.75-.615A2.993 2.993 0 009.75 9.75c.896 0 1.7-.393 2.25-1.016a2.993 2.993 0 002.25 1.016c.896 0 1.7-.393 2.25-1.016a3.001 3.001 0 003.75.614m-16.5 0a3.004 3.004 0 01-.621-4.72L4.318 3.44A1.5 1.5 0 015.378 3h13.243a1.5 1.5 0 011.06.44l1.621 1.62a3.004 3.004 0 01-.621 4.72m-13.5 0h13.5' },
+  { href: '/organizer', label: 'Organizer', iconPath: 'M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5m-9-6h.008v.008H12v-.008zM12 15h.008v.008H12V15zm0 2.25h.008v.008H12v-.008zM9.75 15h.008v.008H9.75V15zm0 2.25h.008v.008H9.75v-.008zM7.5 15h.008v.008H7.5V15zm0 2.25h.008v.008H7.5v-.008zm6.75-4.5h.008v.008h-.008v-.008zm0 2.25h.008v.008h-.008V15zm0 2.25h.008v.008h-.008v-.008zm2.25-4.5h.008v.008H16.5v-.008zm0 2.25h.008v.008H16.5V15z' }
+];
+
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
-  const { login } = useAuth(); // 🌟 Destructured login method from Context
+  const { login } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -20,8 +50,9 @@ function LoginFormContent() {
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [_, startTransition] = useTransition();
 
- const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
@@ -35,62 +66,45 @@ function LoginFormContent() {
       const user = res.data.user;
       const token = res.data.access_token || res.data.token;
 
-      if (token && user) {
-        login(token, user);
-      } else {
+      if (!token || !user) {
         throw new Error('Incomplete session payload returned from server.');
       }
+
+      login(token, user);
       
-      // Intelligent Routing based on your exact role types
-      if (user.role === 'CUSTOMER') {
-        router.push('/dashboard');
-      } else if (user.role === 'RIDER') {
-        if (user.status === 'PENDING_VERIFICATION' || user.status === 'PENDING') {
-          router.push('/rider/onboarding'); 
-        } else {
-          router.push('/rider/dashboard');
-        }
-      } else if (user.role === 'ORGANIZER' || user.role === 'BUSINESS_OWNER') {
-        router.push('/events/dashboard');
-      } else if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/dashboard'); // Safe fallback
-      }
-      
+      const destination = getRedirectUrl(user);
+      startTransition(() => {
+        router.push(destination);
+        router.refresh();
+      });
     } catch (err: any) {
       setError(
         err.response?.data?.message || err.message || 'Invalid email or password.'
       );
-    } finally {
       setLoading(false);
     }
   };
+
   return (
     <>
-      {/* Titles */}
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">Welcome Back!</h2>
         <p className="mt-1 text-sm text-zinc-500">Login to continue</p>
       </div>
 
-      {/* Success Banner (If redirected from registration) */}
       {registered && (
         <div className="mb-6 rounded-xl bg-emerald-50 border border-emerald-200 p-3.5 text-sm text-emerald-700 font-medium text-center">
           Account created successfully! Please login.
         </div>
       )}
 
-      {/* Error Banner */}
       {error && (
         <div className="mb-6 rounded-xl bg-red-50 border border-red-200 p-3.5 text-sm text-red-600 font-medium text-center">
           {error}
         </div>
       )}
 
-      {/* Form */}
       <form onSubmit={handleLogin} className="space-y-5">
-        {/* Identifier (Email/Phone) */}
         <div>
           <label className="block text-xs font-semibold text-zinc-700 mb-1.5 ml-1">Email or Phone Number</label>
           <div className="relative">
@@ -108,7 +122,6 @@ function LoginFormContent() {
           </div>
         </div>
 
-        {/* Password */}
         <div>
           <label className="block text-xs font-semibold text-zinc-700 mb-1.5 ml-1">Password</label>
           <div className="relative">
@@ -137,7 +150,6 @@ function LoginFormContent() {
           </div>
         </div>
 
-        {/* Remember Me & Forgot Password Row */}
         <div className="flex items-center justify-between">
           <label className="flex items-center gap-2 cursor-pointer">
             <input 
@@ -153,7 +165,6 @@ function LoginFormContent() {
           </Link>
         </div>
 
-        {/* Submit Button */}
         <button 
           type="submit" 
           disabled={loading} 
@@ -176,18 +187,14 @@ function LoginFormContent() {
   );
 }
 
-// 2. Main Page Layout Wrapper
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-zinc-50 font-sans">
-      
-      {/* DESKTOP LEFT COLUMN: Marketing & Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-emerald-50 flex-col items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none" 
              style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, #a7f3d0 0%, transparent 50%)' }} />
         
         <div className="z-10 text-center max-w-md">
-          {/* Large Desktop Logo */}
           <div className="flex items-center justify-center gap-3 mb-8">
             <div className="bg-emerald-700 text-white p-2.5 rounded-2xl shadow-lg">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-8 h-8">
@@ -198,7 +205,6 @@ export default function LoginPage() {
             <h1 className="text-4xl font-extrabold text-zinc-900 tracking-tight">Aviorè Go</h1>
           </div>
 
-          {/* Desktop Illustration Placeholder */}
           <div className="relative w-80 h-80 mx-auto mb-8">
             <Image 
               src="/images/logo.png" 
@@ -211,16 +217,14 @@ export default function LoginPage() {
 
           <h2 className="text-2xl font-bold text-zinc-900 mb-3">Fast, Reliable Deliveries</h2>
           <p className="text-zinc-600 leading-relaxed">
-            Join thousands of users and riders making logistics seamless. Whether you're sending a package or earning on the go, Aviorè Go has you covered.
+            Join thousands of users, riders, and vendors making logistics seamless. Whether you're sending a package, selling items, or organizing events, Aviorè Go has you covered.
           </p>
         </div>
       </div>
 
-      {/* RIGHT COLUMN / MOBILE CENTER: Login Card */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-md bg-white rounded-3xl border border-zinc-200 p-8 shadow-sm">
+        <div className="w-full max-w-lg bg-white rounded-3xl border border-zinc-200 p-8 shadow-sm">
           
-          {/* MOBILE HEADER: Shows only on mobile */}
           <div className="lg:hidden flex flex-col items-center mb-8">
             <div className="flex items-center gap-2 mb-4 text-emerald-700">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8">
@@ -228,7 +232,6 @@ export default function LoginPage() {
               </svg>
               <span className="text-2xl font-bold text-zinc-900 tracking-tight">Aviorè Go</span>
             </div>
-            {/* Mobile Illustration */}
             <div className="w-48 h-32 relative">
                <Image 
                 src="/images/logo.png" 
@@ -239,7 +242,6 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* 🌟 Wrapped form logic inside Suspense to fix the prerender crash */}
           <Suspense fallback={
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-700"></div>
@@ -248,44 +250,29 @@ export default function LoginPage() {
             <LoginFormContent />
           </Suspense>
 
-          {/* Divider */}
           <div className="flex items-center gap-3 my-8">
             <div className="h-px w-full bg-zinc-200"></div>
             <span className="text-xs text-zinc-400 font-medium lowercase">or</span>
             <div className="h-px w-full bg-zinc-200"></div>
           </div>
 
-          {/* Registration Section */}
           <div className="text-center">
             <p className="text-sm text-zinc-500 mb-4">Don't have an account?</p>
-            <div className="grid grid-cols-2 gap-3">
-              
-              {/* Register Customer Card */}
-              <Link href="/customer-onboarding" className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-3 hover:border-emerald-600 hover:bg-emerald-50 transition group cursor-pointer">
-                <div className="bg-emerald-100 text-emerald-700 p-2 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <span className="block text-xs font-bold text-zinc-800 group-hover:text-emerald-700 transition">Register as</span>
-                  <span className="block text-[11px] text-zinc-500 group-hover:text-emerald-600 transition">Customer</span>
-                </div>
-              </Link>
-
-              {/* Register Rider Card */}
-              <Link href="/apply" className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-3 py-3 hover:border-emerald-600 hover:bg-emerald-50 transition group cursor-pointer">
-                <div className="bg-emerald-100 text-emerald-700 p-2 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <span className="block text-xs font-bold text-zinc-800 group-hover:text-emerald-700 transition">Register as</span>
-                  <span className="block text-[11px] text-zinc-500 group-hover:text-emerald-600 transition">Rider</span>
-                </div>
-              </Link>
-
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {OnboardingLinks.map((link) => (
+                <Link 
+                  key={link.href} 
+                  href={link.href} 
+                  className="flex flex-col items-center text-center rounded-xl border border-zinc-200 bg-white p-3 hover:border-emerald-600 hover:bg-emerald-50 transition group cursor-pointer relative z-10"
+                >
+                  <div className="bg-emerald-100 text-emerald-700 p-2 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition mb-1.5 pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 pointer-events-none">
+                      <path strokeLinecap="round" strokeLinejoin="round" d={link.iconPath} />
+                    </svg>
+                  </div>
+                  <span className="block text-[11px] font-bold text-zinc-800 group-hover:text-emerald-700 transition pointer-events-none">{link.label}</span>
+                </Link>
+              ))}
             </div>
           </div>
 

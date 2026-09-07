@@ -1,188 +1,167 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Utensils, Package, ShoppingBag, Pill, Grid, ArrowRight, Sparkles, BellRing } from 'lucide-react';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { api } from "@/src/lib/api";
+import { 
+  Flame, 
+  ChevronRight, 
+  Loader2,
+  Sparkles
+} from "lucide-react";
+import MerchantCardGrid, { MerchantCardData } from "@/src/components/MerchantCardGrid";
 
-const serviceCategories = [
-  {
-    title: 'Food Delivery',
-    description: 'Order meals from top local restaurants.',
-    href: '/food',
-    icon: Utensils,
-    badge: 'Coming Soon',
-    isLive: false,
-    bgLight: 'bg-orange-50 hover:bg-orange-100/80',
-    borderColor: 'border-orange-200',
-    textColor: 'text-orange-900',
-    iconBg: 'bg-orange-500 text-white',
-  },
-  {
-    title: 'Send Package',
-    description: 'Fast, secure parcel delivery across cities.',
-    href: '/shipments/create',
-    icon: Package,
-    badge: 'Express',
-    isLive: true,
-    bgLight: 'bg-emerald-50 hover:bg-emerald-100/80',
-    borderColor: 'border-emerald-200',
-    textColor: 'text-emerald-900',
-    iconBg: 'bg-emerald-500 text-white',
-  },
-  {
-    title: 'Marketplace',
-    description: 'Shop items and creator merchandise.',
-    href: '/marketplace',
-    icon: ShoppingBag,
-    badge: 'Coming Soon',
-    isLive: false,
-    bgLight: 'bg-purple-50 hover:bg-purple-100/80',
-    borderColor: 'border-purple-200',
-    textColor: 'text-purple-900',
-    iconBg: 'bg-purple-500 text-white',
-  },
-  {
-    title: 'Pharmacy',
-    description: 'Get medications and health essentials.',
-    href: '/pharmacy',
-    icon: Pill,
-    badge: 'Coming Soon',
-    isLive: false,
-    bgLight: 'bg-rose-50 hover:bg-rose-100/80',
-    borderColor: 'border-rose-200',
-    textColor: 'text-rose-900',
-    iconBg: 'bg-rose-500 text-white',
-  },
-  {
-    title: 'More Services',
-    description: 'Explore event tickets, transit rides & more.',
-    href: '/services',
-    icon: Grid,
-    badge: 'Explore',
-    isLive: true,
-    bgLight: 'bg-blue-50 hover:bg-blue-100/80',
-    borderColor: 'border-blue-200',
-    textColor: 'text-blue-900',
-    iconBg: 'bg-blue-500 text-white',
-  },
-];
+interface CategoryObj {
+  id: string;
+  name: string;
+  slug: string;
+}
 
-export default function HorizontalServicesSection() {
-  const [modalService, setModalService] = useState<string | null>(null);
-
-  const handleCardClick = (service: typeof serviceCategories[0], e: React.MouseEvent) => {
-    if (!service.isLive) {
-      e.preventDefault();
-      setModalService(service.title);
-    }
+interface FoodItem {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl?: string;
+  description?: string;
+  category?: string;
+  subCategory?: string;
+  merchantId: string;
+  merchant?: {
+    id: string;
+    businessName: string;
+    address?: string;
+    coverUrl?: string;
+    logoUrl?: string;
+    rating?: number | string;
+    deliveryTime?: string;
+    isOpen?: boolean;
   };
+}
+
+export default function CategoriesSection() {
+  const [categories, setCategories] = useState<CategoryObj[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(true);
+
+  useEffect(() => {
+    api.get("/storefront/categories")
+      .then((res) => {
+        const data = res.data;
+        setCategories(Array.isArray(data) ? data : []);
+        setLoadingCategories(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load database categories:", err);
+        setLoadingCategories(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    setLoadingItems(true);
+    api.get(`/storefront/food-items?category=${selectedCategory}`)
+      .then((res) => {
+        const data = res.data;
+        setFoodItems(Array.isArray(data) ? data : []);
+        setLoadingItems(false);
+      })
+      .catch((err) => {
+        console.error("Failed to load food items:", err);
+        setLoadingItems(false);
+      });
+  }, [selectedCategory]);
+
+  // Map food items into MerchantCardData format to utilize MerchantCardGrid component seamlessly
+  const formattedMerchants: MerchantCardData[] = foodItems.map((item) => ({
+    id: item.merchantId || item.id,
+    businessName: item.merchant?.businessName || item.name,
+    coverUrl: item.merchant?.coverUrl || item.imageUrl,
+    logoUrl: item.merchant?.logoUrl,
+    rating: item.merchant?.rating || "4.7",
+    deliveryTime: item.merchant?.deliveryTime || "20-30 min",
+    cuisineType: item.category || item.subCategory || "Nigerian • Local",
+    isOpen: item.merchant?.isOpen ?? true,
+  }));
 
   return (
-    <section className="py-12 bg-white text-neutral-900 overflow-hidden relative">
-      
-      {/* Coming Soon Modal Popup */}
-      {modalService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-200 text-center space-y-6 relative overflow-hidden">
-            <div className="absolute -right-16 -top-16 w-40 h-40 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-            
-            <div className="w-16 h-16 rounded-2xl bg-orange-50 border border-orange-200 text-orange-600 flex items-center justify-center mx-auto shadow-inner">
-              <Sparkles size={32} className="animate-pulse" />
-            </div>
-
-            <div className="space-y-2">
-              <span className="inline-block px-3 py-1 rounded-full bg-orange-100 text-orange-800 text-[10px] font-black uppercase tracking-wider">
-                Coming Soon
-              </span>
-              <h3 className="text-2xl font-black text-slate-950 tracking-tight">
-                {modalService}
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium leading-relaxed">
-                We are currently building high-performance infrastructure for <span className="font-bold text-slate-800">{modalService}</span> on **AVIORÈ**. Stay tuned for our upcoming launch!
-              </p>
-            </div>
-
-            <div className="pt-2 flex flex-col gap-2.5">
-              <button
-                onClick={() => setModalService(null)}
-                className="w-full py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-lg shadow-emerald-700/25 transition-all flex items-center justify-center gap-2"
-              >
-                <BellRing size={16} /> Got it, notify me!
-              </button>
-              <button
-                onClick={() => setModalService(null)}
-                className="w-full py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all"
-              >
-                Close
-              </button>
-            </div>
+    <section className="max-w-7xl mx-auto px-4 sm:px-2 lg:px-8">
+      {/* Header with Flashy Glow */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-base sm:text-lg font-black text-neutral-900 tracking-tight">Explore Categories</h2>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs animate-pulse">
+              <Sparkles size={10} className="mr-1" /> Hot Picks
+            </span>
           </div>
+          <p className="text-xs font-semibold text-neutral-500">Mouth-watering dishes freshly prepared by top vendors</p>
         </div>
-      )}
+        <Link 
+          href="/food/categories" 
+          className="hidden sm:flex items-center gap-1 text-xs font-extrabold text-orange-600 hover:text-orange-700 transition-colors"
+        >
+          <span>View All</span>
+          <ChevronRight size={14} />
+        </Link>
+      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-3">
-          <div className="space-y-1">
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-neutral-900">
-              Explore Our <span className="text-emerald-600">Core Services</span>
-            </h2>
-            <p className="text-xs sm:text-sm text-neutral-600">
-              Everything you need, delivered straight to your door or event.
-            </p>
+      {/* Flashy Horizontal Category Pills */}
+      <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-3 pt-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <button
+          onClick={() => setSelectedCategory("all")}
+          className={`group relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer border ${
+            selectedCategory === "all" 
+              ? "bg-gradient-to-r from-neutral-900 to-neutral-800 text-white shadow-lg shadow-neutral-900/20 font-black border-transparent scale-105 ring-2 ring-orange-500/50" 
+              : "bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200/80 shadow-xs font-bold hover:border-orange-200"
+          }`}
+        >
+          <div className={`p-1.5 rounded-xl transition-transform group-hover:scale-110 ${selectedCategory === "all" ? "bg-white/20 text-white" : "bg-orange-50 text-orange-600 shadow-2xs"}`}>
+            <Flame size={16} />
           </div>
-          <Link
-            href="/services"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
-          >
-            <span>View all services</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
+          <span className="text-[11px] tracking-tight">All Dishes</span>
+        </button>
 
-        {/* Services Grid: Scrollable horizontally on mobile/tablet, 5-col grid on desktop */}
-        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-5 gap-4 overflow-x-auto sm:overflow-visible pb-4 sm:pb-0 scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
-          {serviceCategories.map((service) => {
-            const Icon = service.icon;
-            return (
-              <Link
-                key={service.title}
-                href={service.href}
-                onClick={(e) => handleCardClick(service, e)}
-                className={`group flex flex-col justify-between p-4 sm:p-5 rounded-3xl ${service.bgLight} border ${service.borderColor} transition-all duration-300 shadow-sm hover:shadow-md hover:-translate-y-1 shrink-0 w-[240px] sm:w-auto`}
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-3 sm:mb-4">
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl ${service.iconBg} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`}>
-                      <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </div>
-                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shadow-xs border ${
-                      service.isLive 
-                        ? 'bg-white/80 text-neutral-800 border-neutral-200/50' 
-                        : 'bg-orange-100 text-orange-800 border-orange-200'
-                    }`}>
-                      {service.badge}
-                    </span>
-                  </div>
-                  <h3 className={`text-sm sm:text-base font-black ${service.textColor} mb-1`}>
-                    {service.title}
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-neutral-600 leading-relaxed font-medium line-clamp-2">
-                    {service.description}
-                  </p>
-                </div>
+        {!loadingCategories && categories.map((cat, idx) => {
+          const categoryKey = cat.slug || cat.id || cat.name;
+          const isSelected = selectedCategory === categoryKey;
+          
+          const themes = [
+            "from-orange-500 to-amber-500 shadow-orange-500/25",
+            "from-rose-500 to-pink-500 shadow-rose-500/25",
+            "from-purple-500 to-indigo-500 shadow-purple-500/25",
+            "from-emerald-500 to-teal-500 shadow-emerald-500/25",
+            "from-blue-500 to-cyan-500 shadow-blue-500/25",
+          ];
+          const activeThemeClass = themes[idx % themes.length];
 
-                <div className="mt-4 sm:mt-6 pt-3 border-t border-black/5 flex items-center justify-between text-xs font-bold text-neutral-800 group-hover:text-emerald-700">
-                  <span>{service.isLive ? 'Get Started' : 'Coming Soon'}</span>
-                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-xs group-hover:translate-x-1 transition-transform">
-                    <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-neutral-800" />
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
+          return (
+            <button
+              key={cat.id || cat.slug}
+              onClick={() => setSelectedCategory(categoryKey)}
+              className={`group relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer border capitalize ${
+                isSelected 
+                  ? `bg-gradient-to-r ${activeThemeClass} text-white shadow-md font-black border-transparent scale-105 ring-2 ring-white/50` 
+                  : "bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200/80 shadow-xs font-bold hover:border-orange-200"
+              }`}
+            >
+              <div className={`p-1.5 rounded-xl transition-transform group-hover:scale-110 ${isSelected ? "bg-white/20 text-white" : "bg-neutral-100 text-neutral-600 shadow-2xs"}`}>
+                <Sparkles size={16} />
+              </div>
+              <span className="text-[11px] tracking-tight">{cat.name}</span>
+            </button>
+          );
+        })}
+      </div>
 
+      {/* Refactored Merchant Product Grid Component Integration */}
+      <div className="mt-4">
+        <MerchantCardGrid
+          merchants={formattedMerchants}
+          loading={loadingItems}
+          emptyTitle="No flashy dishes found under this category yet."
+          emptySubtitle="Try switching back to 'All Dishes' to see more delicious meals!"
+        />
       </div>
     </section>
   );

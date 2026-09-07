@@ -1,38 +1,59 @@
-import Navbar from "../components/home/Navbar";
-import HeroSection from "../components/home/HeroSection";
-import ServicesSection from "../components/home/ServicesSection";
-import CoverageSection from "../components/home/CoverageSection";
-import EcosystemSection from "../components/home/EcosystemSection";
-import HowItWorksSection from "../components/home/HowItWorksSection";
-import DeliveryTypesSection from "../components/home/DeliveryTypesSection";
-import PaymentsAndRiderSection from "../components/home/PaymentsAndRiderSection";
-import WhyChooseUsSection from "../components/home/WhyChooseUsSection";
-import Footer from "../components/home/Footer";
-import HomeSearchBarSection from "../components/home/HomeSearchBar";
-import VerticalServicesSection from "../components/home/ServiceSection";
-import PopularRestaurantsSection from "../components/home/PopularRestaurant";
-import UpcomingEventsSection from "../components/home/UpcomingEvents";
+// app/page.tsx (The Root Gatekeeper)
+'use client';
 
-export default function HomePage() {
-  return (
-    <div className="min-h-screen bg-white font-sans text-neutral-900 antialiased selection:bg-emerald-500 selection:text-white">
-      <Navbar />
-      <main>
-        <HeroSection />
-        <HomeSearchBarSection />
-        <VerticalServicesSection />
-        <PopularRestaurantsSection />
-        <UpcomingEventsSection />
-        <ServicesSection />
-        
-        <CoverageSection />
-        <EcosystemSection />
-        <HowItWorksSection />
-        <DeliveryTypesSection />
-        <PaymentsAndRiderSection />
-        <WhyChooseUsSection />
-      </main>
-      <Footer />
-    </div>
-  );
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import PublicMarketingPage from './publicmarketing/page'; // or import your public components here
+
+export default function RootGatekeeper() {
+  const router = useRouter();
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('aviore_token');
+    const storedUser = localStorage.getItem('aviore_user');
+
+    if (!token || !storedUser) {
+      setIsChecking(false);
+      return;
+    }
+
+    try {
+      const user = JSON.parse(storedUser);
+
+      switch (user.role) {
+        case 'CUSTOMER':
+          router.replace('/dashboard');
+          break;
+        case 'RIDER':
+          router.replace('/rider/dashboard');
+          break;
+        case 'BUSINESS_OWNER':
+          router.replace('/business/home');
+          break;
+        case 'ORGANIZER':
+          router.replace('/organizer/home');
+          break;
+        case 'ADMIN':
+        case 'SUPER_ADMIN':
+          router.replace('/admin/dashboard');
+          break;
+        default:
+          setIsChecking(false);
+      }
+    } catch (e) {
+      console.error('Session check failed:', e);
+      setIsChecking(false);
+    }
+  }, [router]);
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
+  return <PublicMarketingPage />;
 }

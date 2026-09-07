@@ -2,8 +2,19 @@ import * as z from "zod";
 
 export enum UserRole {
   CUSTOMER = "CUSTOMER",
-  RIDER = "RIDER"
-  
+  RIDER = "RIDER",
+  ORGANIZER = "ORGANIZER",
+  BUSINESS_OWNER = "BUSINESS_OWNER",
+  ADMIN = "ADMIN",
+  SUPER_ADMIN = "SUPER_ADMIN",
+}
+
+export enum AccountStatus {
+  ACTIVE = "ACTIVE",
+  UNDER_REVIEW = "UNDER_REVIEW",
+  REJECTED = "REJECTED",
+  PENDING = "PENDING",
+  PENDING_VERIFICATION = "PENDING_VERIFICATION",
 }
 
 // 1. Shared Base Customer / Initial Personal Details
@@ -27,7 +38,7 @@ export const riderBankSchema = z.object({
   accountNumber: z.string().regex(/^[0-9]{10}$/, "Account number must be exactly 10 digits"),
   accountName: z.string().min(3, "Settlement bank account recipient name is required"),
   acceptTerms: z.literal(true, {
-   message: "You must accept the terms to proceed" ,
+    message: "You must accept the terms to proceed",
   }),
 });
 

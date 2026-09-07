@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, MapPin, ArrowRight, Sparkles, Ticket } from "lucide-react";
+import { Calendar, MapPin, Bus, Heart } from "lucide-react";
+import { eventsApi } from "@/src/lib/eventsApi";
 
 interface EventItem {
   id: string;
@@ -10,8 +11,7 @@ interface EventItem {
   date: string;
   location: string;
   image?: string;
-  category?: string;
-  price?: string;
+  transportAvailable?: boolean;
 }
 
 export default function UpcomingEventsSection() {
@@ -21,11 +21,19 @@ export default function UpcomingEventsSection() {
   useEffect(() => {
     async function fetchEvents() {
       try {
-        const res = await fetch("/api/events");
-        if (res.ok) {
-          const data = await res.json();
-          setEvents(data.events || data || []);
-        }
+        const data = await eventsApi.getEvents();
+        const eventList = Array.isArray(data) ? data : data.events || data.data || [];
+        
+        const formattedEvents = eventList.map((event: any) => ({
+          id: event.id,
+          title: event.title,
+          date: event.date || (event.routes?.[0]?.trips?.[0]?.departureTime ? new Date(event.routes[0].trips[0].departureTime).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : "Upcoming"),
+          location: event.venue || event.city || "See Route Details",
+          image: event.imageUrl || event.coverUrl || event.image,
+          transportAvailable: true, // Displaying transportation status badge as shown in design
+        }));
+
+        setEvents(formattedEvents);
       } catch (error) {
         console.error("Failed to fetch upcoming events:", error);
       } finally {
@@ -37,103 +45,90 @@ export default function UpcomingEventsSection() {
   }, []);
 
   return (
-    <section className="py-16 bg-white border-t border-neutral-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+    <section className="py-6 bg-white border-t border-neutral-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
         
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-[11px] font-extrabold shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-orange-500" />
-              <span>Live & Upcoming</span>
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight">
-              Upcoming Events & Trips
-            </h3>
-          </div>
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-black text-neutral-900 tracking-tight">
+            Events near you
+          </h2>
           <Link
             href="/dashboard/events"
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+            className="text-xs font-extrabold text-orange-600 hover:text-orange-700 transition-colors"
           >
-            <span>View All Events</span>
-            <ArrowRight size={14} />
+            See all
           </Link>
         </div>
 
         {/* Dynamic Content States */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((n) => (
-              <div key={n} className="h-64 rounded-3xl bg-neutral-100 animate-pulse border border-neutral-200" />
+              <div key={n} className="h-36 rounded-2xl bg-neutral-100 animate-pulse border border-neutral-200" />
             ))}
           </div>
         ) : events.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {events.slice(0, 3).map((event) => (
               <Link
                 key={event.id}
-                href={`/dashboard/events/${event.id}`}
-                className="group rounded-3xl bg-neutral-50 border border-neutral-200/80 overflow-hidden flex flex-col justify-between hover:border-emerald-500/50 hover:shadow-xl transition-all duration-300"
+                href={`/dashboard/events`}
+                className="group p-3.5 rounded-2xl bg-white border border-neutral-200/80 shadow-2xs hover:border-emerald-500/50 hover:shadow-md transition-all duration-200 flex items-start gap-3.5 relative"
               >
-                <div className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider">
-                      {event.category || "Event Trip"}
-                    </span>
-                    <span className="text-xs font-bold text-neutral-400 font-mono">
-                      {event.price || "Free Entry"}
-                    </span>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <h4 className="font-black text-lg text-neutral-900 group-hover:text-emerald-600 transition-colors line-clamp-1">
-                      {event.title}
-                    </h4>
-                    <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
-                      <Calendar size={13} className="text-emerald-600 shrink-0" />
-                      <span>{event.date}</span>
+                {/* Event Poster Thumbnail */}
+                <div className="w-20 h-24 sm:w-24 sm:h-28 rounded-xl bg-neutral-900 overflow-hidden shrink-0 relative shadow-inner">
+                  {event.image ? (
+                    <img src={event.image} alt={event.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-neutral-900 to-neutral-800 p-2.5 flex flex-col justify-between text-amber-400 font-black text-[11px] leading-tight uppercase tracking-tighter">
+                      <span>{event.title}</span>
+                      <span className="text-[9px] text-neutral-400 font-mono">Aviorè</span>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
-                      <MapPin size={13} className="text-orange-500 shrink-0" />
-                      <span className="line-clamp-1">{event.location}</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
 
-                <div className="px-6 py-4 bg-white border-t border-neutral-200/60 flex items-center justify-between text-xs font-bold text-neutral-900 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                  <span>Book Ride & Ticket</span>
-                  <ArrowRight size={15} className="transform group-hover:translate-x-1 transition-transform" />
+                {/* Event Details */}
+                <div className="flex-1 min-w-0 flex flex-col justify-between h-full py-0.5 space-y-2">
+                  <div className="space-y-1.5">
+                    <div className="flex items-start justify-between gap-1">
+                      <h4 className="font-bold text-xs sm:text-sm text-neutral-950 group-hover:text-emerald-600 transition-colors line-clamp-2 leading-snug">
+                        {event.title}
+                      </h4>
+                      <button type="button" className="text-neutral-400 hover:text-red-500 transition-colors shrink-0 mt-0.5" onClick={(e) => { e.preventDefault(); }}>
+                        <Heart size={15} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-1 text-[11px] text-neutral-500 font-medium">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar size={13} className="text-orange-500 shrink-0" />
+                        <span className="truncate">{event.date}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <MapPin size={13} className="text-orange-500 shrink-0" />
+                        <span className="truncate">{event.location}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transportation Status Badge */}
+                  {event.transportAvailable && (
+                    <div className="pt-1">
+                      <span className="text-[11px] font-bold text-emerald-700 tracking-tight">
+                        Transportation available
+                      </span>
+                    </div>
+                  )}
                 </div>
               </Link>
             ))}
           </div>
         ) : (
-          /* Fallback Empty State (When no live backend events are active yet) */
-          <div className="rounded-3xl bg-gradient-to-br from-neutral-900 via-neutral-950 to-emerald-950 p-8 sm:p-12 text-white text-center space-y-6 border border-neutral-800 shadow-xl relative overflow-hidden">
-            <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
-              <Ticket size={28} />
-            </div>
-
-            <div className="space-y-2 max-w-md mx-auto relative z-10">
-              <h4 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                Exciting Event Trips Loading Soon!
-              </h4>
-              <p className="text-xs sm:text-sm text-neutral-400 font-medium leading-relaxed">
-                We are curating upcoming concerts, festivals, and exclusive group shuttles across Lagos. Check back shortly or head to your dashboard to stay notified.
-              </p>
-            </div>
-
-            <div className="pt-2 relative z-10">
-              <Link
-                href="/dashboard/events"
-                className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-7 py-3.5 rounded-full shadow-lg shadow-emerald-600/30 transition-all hover:scale-102"
-              >
-                <span>Explore Events Hub</span>
-                <ArrowRight size={15} />
-              </Link>
-            </div>
+          /* Fallback Empty State */
+          <div className="p-8 rounded-2xl bg-neutral-50 border border-neutral-200/80 text-center space-y-2">
+            <p className="text-xs font-bold text-neutral-900">No events near you right now</p>
+            <p className="text-[11px] text-neutral-500">Check back later for newly published festivals and concerts.</p>
           </div>
         )}
 

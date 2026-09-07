@@ -19,6 +19,7 @@ export interface User {
     | 'CUSTOMER'
     | 'RIDER'
     | 'BUSINESS_OWNER'
+    | 'ORGANIZER'
     | 'ADMIN'
     | 'SUPER_ADMIN';
 
@@ -36,7 +37,7 @@ interface AuthContextType {
     user: User,
   ) => void;
 
-  updateUser: (user: Partial<User>) => void; // 🟢 Added to sync user state dynamically
+  updateUser: (user: Partial<User>) => void;
 
   logout: () => void;
 }
@@ -60,9 +61,6 @@ export function AuthProvider({
   const [loading, setLoading] =
     useState(true);
 
-  /**
-   * Restore session
-   */
   useEffect(() => {
     const storedToken =
       localStorage.getItem('aviore_token');
@@ -83,30 +81,21 @@ export function AuthProvider({
     setLoading(false);
   }, []);
 
-  /**
-   * Login
-   */
-  const login = (
+const login = (
     token: string,
     user: User,
   ) => {
-    localStorage.setItem(
-      'aviore_token',
-      token,
-    );
+    localStorage.setItem('aviore_token', token);
+    localStorage.setItem('aviore_user', JSON.stringify(user));
 
-    localStorage.setItem(
-      'aviore_user',
-      JSON.stringify(user),
-    );
+    // 🌟 CRITICAL: Set cookies for Next.js Middleware to read
+    document.cookie = `aviore_token=${token}; path=/; max-age=86400; SameSite=Strict`;
+    document.cookie = `user_role=${user.role}; path=/; max-age=86400; SameSite=Strict`;
 
     setToken(token);
     setUser(user);
   };
 
-  /**
-   * 🟢 Update active user data dynamically (e.g., post onboarding submission)
-   */
   const updateUser = (partialUser: Partial<User>) => {
     setUser((prevUser) => {
       if (!prevUser) return null;
@@ -115,24 +104,18 @@ export function AuthProvider({
       return updated;
     });
   };
+const logout = () => {
+    localStorage.removeItem('aviore_token');
+    localStorage.removeItem('aviore_user');
 
-  /**
-   * Logout
-   */
-  const logout = () => {
-    localStorage.removeItem(
-      'aviore_token',
-    );
-
-    localStorage.removeItem(
-      'aviore_user',
-    );
+    // 🌟 Clear cookies on logout
+    document.cookie = 'aviore_token=; path=/; max-age=0';
+    document.cookie = 'user_role=; path=/; max-age=0';
 
     setToken(null);
     setUser(null);
 
-    window.location.href =
-      '/login';
+    window.location.href = '/login';
   };
 
   return (

@@ -40,7 +40,7 @@ export default function HowItWorksSection() {
   }, [displayedText, isDeleting, activeStep]);
 
   return (
-    <section id="how-it-works" className="py-14 bg-gradient-to-b from-white via-neutral-50/50 to-white border-t border-neutral-200/60 overflow-hidden">
+    <section id="how-it-works" className="py-6 bg-gradient-to-b from-white via-neutral-50/50 to-white border-t border-neutral-200/60 overflow-hidden">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Section Header */}

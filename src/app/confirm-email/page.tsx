@@ -63,14 +63,17 @@ export default function ConfirmEmailPage() {
         setMessage('Email verified successfully! Redirecting...');
 
         // 4. Determine redirect path based on user role
-        const userRole = data.user?.role?.toUpperCase();
-        let redirectPath = '/become-rider'; // Default fallback
+// 4. Determine redirect path based on user role
+const userRole = data.user?.role?.toUpperCase();
+let redirectPath = '/dashboard'; // Default fallback
 
-        if (userRole === 'ORGANIZER') {
-          redirectPath = '/organizer/onboarding';
-        } else if (userRole === 'RIDER') {
-          redirectPath = '/become-rider';
-        }
+if (userRole === 'MERCHANT') {
+  redirectPath = '/merchant/onboarding';
+} else if (userRole === 'ORGANIZER') {
+  redirectPath = '/organizer/onboarding';
+} else if (userRole === 'RIDER') {
+  redirectPath = '/become-rider';
+}
 
         // 5. Redirect based on role
         setTimeout(() => {

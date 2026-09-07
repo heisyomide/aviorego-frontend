@@ -1,12 +1,7 @@
 'use client';
 
-import React, {
-  ReactNode,
-  useEffect,
-} from 'react';
-
+import React, { ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-
 import { useAuth } from '../context/AuthContext';
 import AuthLoader from '../components/AuthLoader';
 
@@ -15,51 +10,35 @@ interface RoleGuardProps {
   roles: string[];
 }
 
-export default function RoleGuard({
-  children,
-  roles,
-}: RoleGuardProps) {
+export default function RoleGuard({ children, roles }: RoleGuardProps) {
   const router = useRouter();
-
-  const {
-    user,
-    loading,
-  } = useAuth();
+  const { user, loading } = useAuth();
 
   useEffect(() => {
     if (loading) return;
 
-    // User is not authenticated
     if (!user) {
       router.replace('/login');
       return;
     }
 
-    // User doesn't have permission
+    // If user doesn't have the required role, route them to *their* proper dashboard
     if (!roles.includes(user.role)) {
-      router.replace('/unauthorized');
+      const role = user.role;
+      if (role === 'RIDER') {
+        router.replace('/rider/dashboard');
+      } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+        router.replace('/admin/dashboard');
+      } else if (role === 'ORGANIZER' || role === 'BUSINESS_OWNER') {
+        router.replace('/events/dashboard');
+      } else {
+        router.replace('/dashboard');
+      }
     }
-  }, [
-    loading,
-    user,
-    roles,
-    router,
-  ]);
+  }, [loading, user, roles, router]);
 
-  // Show loading screen while restoring session
-  if (loading) {
-    return <AuthLoader />;
-  }
-
-  // Prevent rendering while redirecting
-  if (!user) {
-    return null;
-  }
-
-  // Prevent rendering while redirecting
-  if (!roles.includes(user.role)) {
-    return null;
-  }
+  if (loading) return <AuthLoader />;
+  if (!user || !roles.includes(user.role)) return null;
 
   return <>{children}</>;
 }

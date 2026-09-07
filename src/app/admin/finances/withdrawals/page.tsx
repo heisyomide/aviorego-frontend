@@ -7,6 +7,8 @@ import { api } from '../../../../lib/api';
 export default function WithdrawalRequestsPage() {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  // Track which request ID is currently being processed
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   async function fetchPendingWithdrawals(signal?: AbortSignal) {
     try {
@@ -34,12 +36,15 @@ export default function WithdrawalRequestsPage() {
   async function updatePayoutState(id: string, approve: boolean) {
     const actionPath = approve ? 'approve' : 'reject';
     try {
+      setProcessingId(id);
       await api.patch(`/admin/finances/withdrawals/${id}/${actionPath}`);
       // Instantly slice updated entries out of memory array state
       setRequests((prev) => prev.filter(r => r.id !== id));
     } catch (err: any) {
       console.error('Failed updating payout state:', err);
       alert(err?.response?.data?.message || 'Action could not complete successfully.');
+    } finally {
+      setProcessingId(null);
     }
   }
 
@@ -65,29 +70,35 @@ export default function WithdrawalRequestsPage() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {requests.map((req) => (
-            <div key={req.id} className="bg-white p-6 rounded-3xl border border-neutral-200 flex justify-between items-center shadow-sm hover:border-neutral-300 transition-all">
-              <div>
-                <p className="font-black text-neutral-950 text-base">{req.user}</p>
-                <p className="text-sm font-black text-red-600 font-mono mt-0.5">{req.amount}</p>
-                <p className="text-[9px] text-neutral-400 font-mono uppercase tracking-wider mt-1">Submitted: {req.date}</p>
+          {requests.map((req) => {
+            const isProcessing = processingId === req.id;
+
+            return (
+              <div key={req.id} className="bg-white p-6 rounded-3xl border border-neutral-200 flex justify-between items-center shadow-sm hover:border-neutral-300 transition-all">
+                <div>
+                  <p className="font-black text-neutral-950 text-base">{req.user}</p>
+                  <p className="text-sm font-black text-red-600 font-mono mt-0.5">{req.amount}</p>
+                  <p className="text-[9px] text-neutral-400 font-mono uppercase tracking-wider mt-1">Submitted: {req.date}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => updatePayoutState(req.id, true)}
+                    disabled={isProcessing}
+                    className="px-4 py-2.5 bg-neutral-950 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-neutral-800 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessing ? 'Processing...' : 'Approve'}
+                  </button>
+                  <button 
+                    onClick={() => updatePayoutState(req.id, false)}
+                    disabled={isProcessing}
+                    className="px-4 py-2.5 bg-neutral-100 text-neutral-600 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-neutral-200 border border-neutral-200 shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Reject
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button 
-                  onClick={() => updatePayoutState(req.id, true)}
-                  className="px-4 py-2.5 bg-neutral-950 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-neutral-800 shadow-sm transition-all"
-                >
-                  Approve
-                </button>
-                <button 
-                  onClick={() => updatePayoutState(req.id, false)}
-                  className="px-4 py-2.5 bg-neutral-100 text-neutral-600 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-neutral-200 border border-neutral-200 shadow-sm transition-all"
-                >
-                  Reject
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

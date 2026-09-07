@@ -67,7 +67,7 @@ const popularRestaurants = [
 
 export default function PopularRestaurantsSection() {
   return (
-    <section className="py-14 bg-white text-neutral-900 overflow-hidden border-t border-neutral-100">
+    <section className="py-6 bg-white text-neutral-900 overflow-hidden border-t border-neutral-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}

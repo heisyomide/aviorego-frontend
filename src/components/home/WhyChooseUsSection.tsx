@@ -30,7 +30,7 @@ const features = [
 
 export default function WhyChooseUsSection() {
   return (
-    <section className="py-14 bg-neutral-50/80 border-t border-neutral-100 overflow-hidden">
+    <section className="py-6 bg-neutral-50/80 border-t border-neutral-100 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Section Header */}

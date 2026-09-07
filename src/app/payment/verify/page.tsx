@@ -20,11 +20,10 @@ function PaymentVerifyContent() {
       const transactionId = params.get('transaction_id');
 
       if (!transactionId) {
-        throw new Error('Missing transaction ID.');
+        throw new Error('Missing transaction ID reference.');
       }
 
       const token = localStorage.getItem('accessToken');
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/flutterwave/verify/${transactionId}`,
         {
@@ -35,25 +34,29 @@ function PaymentVerifyContent() {
         },
       );
 
-const result = await response.json();
+      const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.message || 'Verification failed.');
+        throw new Error(result.message || 'Payment verification failed.');
       }
 
       setStatus('success');
       setMessage('Payment verified successfully. Redirecting...');
 
-      // Fix: Inspect the backend verification return payload or check URL params/meta safely
-      // Assuming your backend returns what was processed or you check metadata safely:
       const meta = result?.meta || {};
-      const redirectPath = meta.eventId ? '/dashboard/events' : '/dashboard/shipment';
+      let redirectPath = '/dashboard/shipment';
+
+      if (meta.eventId) {
+        redirectPath = '/dashboard/events';
+      } else if (meta.type === 'FOOD_CART_CHECKOUT') {
+        redirectPath = '/cart/success';
+      }
 
       setTimeout(() => {
         router.replace(redirectPath);
       }, 2500);
     } catch (err: any) {
-      console.error(err);
+      console.error('[PAYMENT_VERIFY_ERROR]', err);
       setStatus('failed');
       setMessage(err.message || 'Verification failed.');
     }

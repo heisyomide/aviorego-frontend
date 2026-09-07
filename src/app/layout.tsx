@@ -13,6 +13,7 @@ import SplashGate from "../components/SplashGate";
 import PushNotificationManager from "../components/PushNotificationManager";
 import RealtimeNotificationListener from "../components/RealtimeNotificationListener"; 
 import AppUpdateBanner from "../components/AppUpdateBanner";
+import UniversalBottomNav from "@/src/components/home/UniversalBottomNav";
 
 export const viewport: Viewport = {
   themeColor: "#16a34a",
@@ -172,7 +173,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="min-h-screen bg-[#f8fafc] text-neutral-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
+      <body className="min-h-screen bg-[#f8fafc] text-neutral-900 font-sans antialiased selection:bg-emerald-500 selection:text-white pb-24">
         <ReactQueryProvider>
           <AuthProvider>
             <SplashGate>
@@ -180,7 +181,12 @@ export default function RootLayout({
               <AppUpdateBanner />
               <PushNotificationManager />
               <RealtimeNotificationListener />
+              
+              {/* Main App Workspace */}
               {children}
+
+              {/* Universal Role-Based Bottom Navigation Bar */}
+              <UniversalBottomNav />
             </SplashGate>
           </AuthProvider>
         </ReactQueryProvider>

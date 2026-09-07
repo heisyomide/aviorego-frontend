@@ -1,13 +1,20 @@
-// src/app/organizer/signup/page.tsx
 'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 
-export default function OrganizerRegisterPage() {
+const MERCHANT_TYPES = [
+  { id: 'RESTAURANT', label: 'Restaurant / Food', description: 'Sell meals, fast food, and drinks' },
+  { id: 'RETAIL', label: 'Retail / Store', description: 'Sell clothing, electronics, and goods' },
+  { id: 'GROCERY', label: 'Grocery / Supermarket', description: 'Sell fresh produce and household items' },
+  { id: 'PHARMACY', label: 'Pharmacy / Health', description: 'Sell medical and wellness products' },
+];
+
+export default function MerchantRegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [merchantType, setMerchantType] = useState('RESTAURANT');
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -17,7 +24,7 @@ export default function OrganizerRegisterPage() {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!email || !password || !confirmPassword) {
+    if (!email || !password || !confirmPassword || !merchantType) {
       setErrorMessage('Please fill in all fields.');
       return;
     }
@@ -36,7 +43,7 @@ export default function OrganizerRegisterPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/register/organizer`,
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/auth/register`,
         {
           method: 'POST',
           headers: {
@@ -45,6 +52,8 @@ export default function OrganizerRegisterPage() {
           body: JSON.stringify({
             email: email.trim(),
             password: password,
+            role: 'MERCHANT',
+            merchantType: merchantType,
           }),
         },
       );
@@ -52,7 +61,7 @@ export default function OrganizerRegisterPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to create organizer account.');
+        throw new Error(data.message || 'Failed to create merchant account.');
       }
 
       setIsSubmitted(true);
@@ -68,13 +77,13 @@ export default function OrganizerRegisterPage() {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center items-center p-4">
         <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 text-center shadow-lg">
-          <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl border border-amber-200">
+          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl border border-emerald-200">
             ✉️
           </div>
 
           <h2 className="text-2xl font-bold mb-2 text-slate-900">Check Your Email</h2>
           <p className="text-slate-600 text-sm mb-6 leading-relaxed">
-            We sent a verification link to <span className="text-amber-600 font-semibold">{email}</span>. Please open your inbox, click <span className="text-slate-900 font-semibold">Confirm Email</span>, and proceed to your organization setup.
+            We sent a verification link to <span className="text-emerald-600 font-semibold">{email}</span>. Please open your inbox, click <span className="text-slate-900 font-semibold">Confirm Email</span>, and proceed to your store setup.
           </p>
 
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 mb-6 text-xs text-slate-500">
@@ -83,7 +92,7 @@ export default function OrganizerRegisterPage() {
 
           <button
             onClick={() => setIsSubmitted(false)}
-            className="text-amber-600 hover:text-amber-700 text-sm font-semibold transition-colors"
+            className="text-emerald-600 hover:text-emerald-700 text-sm font-semibold transition-colors"
           >
             ← Back to registration
           </button>
@@ -92,19 +101,19 @@ export default function OrganizerRegisterPage() {
     );
   }
 
-  // State 1: Light Mode Signup Form
+  // State 1: Light Mode Signup Form with Merchant Type selection
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-center items-center p-4">
       <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 shadow-xl">
         
         {/* Header */}
-        <div className="mb-8 text-center">
-          <span className="text-xs uppercase tracking-wider text-amber-700 font-bold bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+        <div className="mb-6 text-center">
+          <span className="text-xs uppercase tracking-wider text-emerald-700 font-bold bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
             Aviorè Partner Portal
           </span>
-          <h1 className="text-3xl font-bold mt-3 text-slate-900">Organizer Registration</h1>
+          <h1 className="text-3xl font-bold mt-3 text-slate-900">Merchant Registration</h1>
           <p className="text-slate-500 text-sm mt-1">
-            Create your account to start managing events and transit corridors
+            Create your account to list your store and manage deliveries
           </p>
         </div>
 
@@ -117,7 +126,30 @@ export default function OrganizerRegisterPage() {
         )}
 
         {/* Registration Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+              Select Merchant Type
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {MERCHANT_TYPES.map((type) => (
+                <button
+                  key={type.id}
+                  type="button"
+                  onClick={() => setMerchantType(type.id)}
+                  className={`flex flex-col text-left rounded-xl border p-2.5 transition ${
+                    merchantType === type.id
+                      ? 'border-emerald-600 bg-emerald-50/50 ring-1 ring-emerald-600'
+                      : 'border-slate-200 bg-slate-50 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="text-xs font-bold text-slate-900">{type.label}</span>
+                  <span className="text-[10px] text-slate-500 mt-0.5 leading-tight">{type.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
               Work Email Address
@@ -127,8 +159,8 @@ export default function OrganizerRegisterPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="organizer@company.com"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 text-sm transition-colors"
+              placeholder="store@example.com"
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 text-sm transition-colors"
             />
           </div>
 
@@ -142,7 +174,7 @@ export default function OrganizerRegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-amber-500 text-sm transition-colors"
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-emerald-500 text-sm transition-colors"
             />
           </div>
 
@@ -159,7 +191,7 @@ export default function OrganizerRegisterPage() {
               className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white text-sm transition-colors ${
                 confirmPassword && password !== confirmPassword
                   ? 'border-red-500 focus:border-red-500'
-                  : 'border-slate-300 focus:border-amber-500'
+                  : 'border-slate-300 focus:border-emerald-500'
               }`}
             />
             {confirmPassword && password !== confirmPassword && (
@@ -170,7 +202,7 @@ export default function OrganizerRegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full mt-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
               <>
@@ -187,9 +219,9 @@ export default function OrganizerRegisterPage() {
         </form>
 
         {/* Footer */}
-        <div className="mt-8 pt-6 border-t border-slate-200 text-center text-xs text-slate-500">
-          Already managing an organization?{' '}
-          <Link href="/login" className="text-amber-600 hover:text-amber-700 font-semibold hover:underline">
+        <div className="mt-6 pt-6 border-t border-slate-200 text-center text-xs text-slate-500">
+          Already managing a store?{' '}
+          <Link href="/login" className="text-emerald-600 hover:text-emerald-700 font-semibold hover:underline">
             Sign In
           </Link>
         </div>
