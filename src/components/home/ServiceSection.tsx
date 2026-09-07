@@ -6,10 +6,9 @@ import { api } from "@/src/lib/api";
 import { 
   Flame, 
   ChevronRight, 
-  Loader2,
   Sparkles
 } from "lucide-react";
-import MerchantCardGrid, { MerchantCardData } from "@/src/components/MerchantCardGrid";
+import FoodProductGrid, { FoodProductCardData } from "@/src/components/MerchantCardGrid";
 
 interface CategoryObj {
   id: string;
@@ -72,16 +71,14 @@ export default function CategoriesSection() {
       });
   }, [selectedCategory]);
 
-  // Map food items into MerchantCardData format to utilize MerchantCardGrid component seamlessly
-  const formattedMerchants: MerchantCardData[] = foodItems.map((item) => ({
-    id: item.merchantId || item.id,
-    businessName: item.merchant?.businessName || item.name,
-    coverUrl: item.merchant?.coverUrl || item.imageUrl,
-    logoUrl: item.merchant?.logoUrl,
-    rating: item.merchant?.rating || "4.7",
-    deliveryTime: item.merchant?.deliveryTime || "20-30 min",
-    cuisineType: item.category || item.subCategory || "Nigerian • Local",
-    isOpen: item.merchant?.isOpen ?? true,
+  // Map food items into FoodProductCardData format to match FoodProductGrid props
+  const formattedProducts: FoodProductCardData[] = foodItems.map((item) => ({
+    id: item.id,
+    name: item.name,
+    description: item.merchant?.businessName || item.category || "Mama's Kitchen",
+    imageUrl: item.imageUrl || item.merchant?.coverUrl,
+    price: item.price,
+    href: `/food/item/${item.id}`,
   }));
 
   return (
@@ -91,7 +88,7 @@ export default function CategoriesSection() {
         <div>
           <div className="flex items-center gap-1.5">
             <h2 className="text-base sm:text-lg font-black text-neutral-900 tracking-tight">Explore Categories</h2>
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-xs animate-pulse">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-linear-to-r from-amber-500 to-orange-500 text-white shadow-xs animate-pulse">
               <Sparkles size={10} className="mr-1" /> Hot Picks
             </span>
           </div>
@@ -112,7 +109,7 @@ export default function CategoriesSection() {
           onClick={() => setSelectedCategory("all")}
           className={`group relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer border ${
             selectedCategory === "all" 
-              ? "bg-gradient-to-r from-neutral-900 to-neutral-800 text-white shadow-lg shadow-neutral-900/20 font-black border-transparent scale-105 ring-2 ring-orange-500/50" 
+              ? "bg-linear-to-r from-neutral-900 to-neutral-800 text-white shadow-lg shadow-neutral-900/20 font-black border-transparent scale-105 ring-2 ring-orange-500/50" 
               : "bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200/80 shadow-xs font-bold hover:border-orange-200"
           }`}
         >
@@ -141,7 +138,7 @@ export default function CategoriesSection() {
               onClick={() => setSelectedCategory(categoryKey)}
               className={`group relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer border capitalize ${
                 isSelected 
-                  ? `bg-gradient-to-r ${activeThemeClass} text-white shadow-md font-black border-transparent scale-105 ring-2 ring-white/50` 
+                  ? `bg-linear-to-r ${activeThemeClass} text-white shadow-md font-black border-transparent scale-105 ring-2 ring-white/50` 
                   : "bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200/80 shadow-xs font-bold hover:border-orange-200"
               }`}
             >
@@ -154,10 +151,10 @@ export default function CategoriesSection() {
         })}
       </div>
 
-      {/* Refactored Merchant Product Grid Component Integration */}
+      {/* Refactored Product Grid Component Integration */}
       <div className="mt-4">
-        <MerchantCardGrid
-          merchants={formattedMerchants}
+        <FoodProductGrid
+          products={formattedProducts}
           loading={loadingItems}
           emptyTitle="No flashy dishes found under this category yet."
           emptySubtitle="Try switching back to 'All Dishes' to see more delicious meals!"

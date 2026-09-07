@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
-import MerchantCardGrid, { MerchantCardData } from "@/src/components/MerchantCardGrid";
+import MerchantCardGrid, { FoodProductCardData } from "@/src/components/MerchantCardGrid";
 
 interface PopularNearYouSectionProps {
   merchants?: any[];
@@ -12,23 +11,20 @@ interface PopularNearYouSectionProps {
 export default function PopularNearYouSection({ merchants = [], loading }: PopularNearYouSectionProps) {
   const safeItems = Array.isArray(merchants) ? merchants : [];
 
-  // Map incoming merchant objects to MerchantCardData structure expected by MerchantCardGrid
-  const formattedMerchants: MerchantCardData[] = safeItems.map((merchant) => ({
+  const formattedMerchants: FoodProductCardData[] = safeItems.map((merchant) => ({
     id: merchant.id,
-    businessName: merchant.businessName,
-    coverUrl: merchant.coverUrl || merchant.logoUrl,
-    logoUrl: merchant.logoUrl,
-    rating: merchant.rating || "4.8",
-    deliveryTime: merchant.deliveryTime || "20-30 min",
-    cuisineType: merchant.cuisineType || merchant.address || "Restaurant Partner",
-    isOpen: merchant.isOpen ?? true,
+    name: merchant.businessName,
+    description: merchant.cuisineType || merchant.address || "Restaurant Partner",
+    imageUrl: merchant.coverUrl || merchant.logoUrl,
+    price: merchant.deliveryTime || "20-30 min",
+    href: `/food/merchant/${merchant.id}`,
   }));
 
   return (
-    <section className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-neutral-100 mt-4">
-      <div className="flex items-center justify-between mb-5">
+    <section className="py-3 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-neutral-100 mt-2">
+      <div className="flex items-center justify-between mb-3">
         <div>
-          <h2 className="text-xl font-black text-neutral-900 tracking-tight">Popular Near You</h2>
+          <h2 className="text-base sm:text-lg font-black text-neutral-900 tracking-tight">Popular Near You</h2>
           <p className="text-xs font-semibold text-neutral-500 mt-0.5">Top-rated merchant spots open and operating around your location</p>
         </div>
         <Link 
@@ -40,7 +36,7 @@ export default function PopularNearYouSection({ merchants = [], loading }: Popul
       </div>
 
       <MerchantCardGrid
-        merchants={formattedMerchants}
+        products={formattedMerchants}
         loading={loading}
         emptyTitle="No merchant spots found near your location right now."
         emptySubtitle="Check back shortly as new restaurants join Avyago!"

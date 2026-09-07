@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { ArrowRight, Flame } from "lucide-react";
-import MerchantCardGrid, { MerchantCardData } from "@/src/components/MerchantCardGrid";
+import FoodProductGrid, { FoodProductCardData } from "@/src/components/MerchantCardGrid";
 
-export interface Merchant extends MerchantCardData {
+export interface Merchant extends FoodProductCardData {
   description?: string;
   address?: string;
   distance?: string;
@@ -16,17 +16,14 @@ interface FeaturedRestaurantsProps {
 }
 
 export default function FeaturedRestaurantsSection({ merchants = [], loading = false }: FeaturedRestaurantsProps) {
-  // Convert standard Merchant list into the exact shape expected by MerchantCardGrid
-  const formattedMerchants: MerchantCardData[] = merchants.map((spot) => ({
+  // Convert standard Merchant list into the exact shape expected by FoodProductGrid
+  const formattedProducts: FoodProductCardData[] = merchants.map((spot) => ({
     id: spot.id,
-    businessName: spot.businessName,
-    coverUrl: spot.coverUrl,
-    logoUrl: spot.logoUrl,
-    rating: spot.rating || 4.8,
-    deliveryTime: spot.deliveryTime || "20-30 min",
-    cuisineType: spot.cuisineType || "Restaurant • Meals",
-    deliveryFee: spot.distance ? `${spot.distance} away` : "N500 delivery",
-    isOpen: true,
+    name: spot.name,
+    description: spot.description || "Restaurant • Meals",
+    imageUrl: spot.imageUrl,
+    price: spot.distance ? `${spot.distance} away` : "₦500 delivery",
+    href: spot.href || `/food/merchant/${spot.id}`,
   }));
 
   return (
@@ -51,8 +48,8 @@ export default function FeaturedRestaurantsSection({ merchants = [], loading = f
         </Link>
       </div>
 
-      <MerchantCardGrid
-        merchants={formattedMerchants}
+      <FoodProductGrid
+        products={formattedProducts}
         loading={loading}
         emptyTitle="No featured spots available right now."
         emptySubtitle="Check back soon!"

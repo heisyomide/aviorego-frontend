@@ -7,10 +7,9 @@ import {
   Flame, 
   Search, 
   ShoppingBag, 
-  Sparkles, 
-  Utensils 
+  Sparkles 
 } from "lucide-react";
-import MerchantCardGrid, { MerchantCardData } from "@/src/components/MerchantCardGrid";
+import FoodProductGrid, { FoodProductCardData } from "@/src/components/MerchantCardGrid";
 
 interface CategoryObj {
   id: string;
@@ -80,15 +79,13 @@ export default function FoodDirectoryPage() {
     return matchesSearch;
   });
 
-  const formattedMerchants: MerchantCardData[] = filteredItems.map((item) => ({
-    id: item.merchantId || item.id,
-    businessName: item.merchant?.businessName || item.name,
-    coverUrl: item.merchant?.coverUrl || item.imageUrl,
-    logoUrl: item.merchant?.logoUrl,
-    rating: item.merchant?.rating || "4.7",
-    deliveryTime: item.merchant?.deliveryTime || "20-30 min",
-    cuisineType: item.category || item.subCategory || "Nigerian • Local",
-    isOpen: item.merchant?.isOpen ?? true,
+  const formattedProducts: FoodProductCardData[] = filteredItems.map((item) => ({
+    id: item.id,
+    name: item.name,
+    description: item.merchant?.businessName || item.category || "Nigerian • Local",
+    imageUrl: item.imageUrl || item.merchant?.coverUrl,
+    price: item.price,
+    href: `/food/item/${item.id}`,
   }));
 
   return (
@@ -98,7 +95,7 @@ export default function FoodDirectoryPage() {
         {/* Flashy Page Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 text-orange-700 text-[11px] font-black tracking-wide">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-linear-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 text-orange-700 text-[11px] font-black tracking-wide">
               <Sparkles className="w-3.5 h-3.5 text-orange-600 animate-pulse" />
               <span>PREMIUM STOREFRONT DIRECTORY</span>
             </div>
@@ -113,7 +110,7 @@ export default function FoodDirectoryPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/dashboard/orders"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-neutral-900 to-neutral-800 hover:from-neutral-800 hover:to-neutral-700 text-white font-bold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-neutral-900/15 transition-all hover:scale-102"
+              className="inline-flex items-center gap-2 bg-linear-to-r from-neutral-900 to-neutral-800 hover:from-neutral-800 hover:to-neutral-700 text-white font-bold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-neutral-900/15 transition-all hover:scale-102"
             >
               <ShoppingBag size={15} className="text-orange-400" />
               <span>My Food Orders</span>
@@ -139,7 +136,7 @@ export default function FoodDirectoryPage() {
               onClick={() => setSelectedCategory("all")}
               className={`group relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer border ${
                 selectedCategory === "all" 
-                  ? "bg-gradient-to-r from-neutral-900 to-neutral-800 text-white shadow-lg shadow-neutral-900/20 font-black border-transparent scale-105 ring-2 ring-orange-500/50" 
+                  ? "bg-linear-to-r from-neutral-900 to-neutral-800 text-white shadow-lg shadow-neutral-900/20 font-black border-transparent scale-105 ring-2 ring-orange-500/50" 
                   : "bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200/80 shadow-xs font-bold hover:border-orange-200"
               }`}
             >
@@ -168,7 +165,7 @@ export default function FoodDirectoryPage() {
                   onClick={() => setSelectedCategory(categoryKey)}
                   className={`group relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer border capitalize ${
                     isSelected 
-                      ? `bg-gradient-to-r ${activeThemeClass} text-white shadow-md font-black border-transparent scale-105 ring-2 ring-white/50` 
+                      ? `bg-linear-to-r ${activeThemeClass} text-white shadow-md font-black border-transparent scale-105 ring-2 ring-white/50` 
                       : "bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200/80 shadow-xs font-bold hover:border-orange-200"
                   }`}
                 >
@@ -184,8 +181,8 @@ export default function FoodDirectoryPage() {
 
         {/* Dynamic Refactored Grid Component */}
         <div className="mt-4">
-          <MerchantCardGrid
-            merchants={formattedMerchants}
+          <FoodProductGrid
+            products={formattedProducts}
             loading={loadingItems}
             emptyTitle="No flashy dishes found under this category yet."
             emptySubtitle="Try switching back to 'All Dishes' or adjust your search term to see more delicious meals!"

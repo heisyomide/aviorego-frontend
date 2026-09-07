@@ -35,8 +35,8 @@ export default function HomePage() {
       <VerticalServicesSection />
       <FeaturedRestaurantsSection merchants={data?.featuredMerchants || []} loading={loading} />
       <PopularNearYouSection merchants={data?.nearbyMerchants || []} loading={loading} />
-      <FeaturedRestaurantsSection merchants={data?.featuredMerchants || []} loading={loading} />
-      <PopularNearYouSection merchants={data?.nearbyMerchants || []} loading={loading} />
+      <PopularRestaurantsSection />
+      <UpcomingEventsSection  />
       <MoreFromAviorGo/>
     </>
   );
