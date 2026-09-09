@@ -19,17 +19,33 @@ function urlBase64ToUint8Array(base64String: string) {
 export default function PushNotificationManager() {
   const [showBellBtn, setShowBellBtn] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
 
-    if (Notification.permission !== "granted") {
-      setShowBellBtn(true);
-    } else {
-      // User has already granted permission -> silently ensure backend has token
-      navigator.serviceWorker.ready
-        .then((reg) => syncPushTokenWithBackend(reg))
-        .catch(console.error);
-    }
+    const checkAndSync = async () => {
+      const token = localStorage.getItem("aviore_token");
+      if (!token) {
+        return; // Wait until logged in
+      }
+
+      if (Notification.permission === "granted") {
+        setShowBellBtn(false);
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          await syncPushTokenWithBackend(registration);
+        } catch (err) {
+          console.error(err);
+        }
+      } else if (Notification.permission !== "denied") {
+        setShowBellBtn(true);
+      }
+    };
+
+    checkAndSync();
+
+    // Optional: listen for storage changes (e.g. login event in another tab or auth sync)
+    window.addEventListener("storage", checkAndSync);
+    return () => window.removeEventListener("storage", checkAndSync);
   }, []);
 
   const syncPushTokenWithBackend = async (registration: ServiceWorkerRegistration) => {

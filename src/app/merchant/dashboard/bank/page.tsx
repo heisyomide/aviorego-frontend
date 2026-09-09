@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/src/lib/api";
 
@@ -18,6 +18,7 @@ export default function MerchantBankAccountPage() {
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountName, setAccountName] = useState("");
+  const [hasExistingAccount, setHasExistingAccount] = useState(false);
 
   useEffect(() => {
     async function initData() {
@@ -26,11 +27,15 @@ export default function MerchantBankAccountPage() {
         const bankList = banksRes.data?.banks || banksRes.data?.data || banksRes.data || [];
         setBanks(Array.isArray(bankList) ? bankList : []);
 
-        const { data } = await api.get('/merchant/dashboard/bank-account');
-        const account = data?.bankAccount || data;
-        if (account?.bankCode) setBankCode(account.bankCode);
-        if (account?.accountNumber) setAccountNumber(account.accountNumber);
-        if (account?.accountName) setAccountName(account.accountName);
+        const { data } = await api.get('/merchant/dashboard/account');
+        const account = data?.bankAccount;
+        
+        if (account) {
+          if (account.bankCode) setBankCode(account.bankCode);
+          if (account.accountNumber) setAccountNumber(account.accountNumber);
+          if (account.accountName) setAccountName(account.accountName);
+          setHasExistingAccount(true);
+        }
       } catch (err) {
         console.error("Failed to initialize bank data", err);
       } finally {
@@ -68,6 +73,7 @@ export default function MerchantBankAccountPage() {
         accountNumber,
         accountName,
       });
+      setHasExistingAccount(true);
       alert("Payout bank account updated securely!");
     } catch (err) {
       console.error("Error saving bank details", err);
@@ -92,9 +98,12 @@ export default function MerchantBankAccountPage() {
         <h1 className="text-xl font-black tracking-tight text-neutral-950">Bank Account</h1>
       </div>
 
-      <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-4 text-xs text-emerald-900 leading-relaxed font-medium">
-        🏦 Daily automated settlements and instant withdrawal payouts are sent directly to this verified corporate or settlement bank account.
-      </div>
+      {hasExistingAccount && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-4 flex items-center gap-3 text-xs text-emerald-900 font-medium">
+          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+          <span>Your active payout account is linked and verified. You can update it anytime below.</span>
+        </div>
+      )}
 
       <div className="bg-white border border-neutral-200/80 rounded-3xl p-6 shadow-sm">
         <form onSubmit={handleSave} className="space-y-4">
@@ -150,7 +159,7 @@ export default function MerchantBankAccountPage() {
           <button 
             type="submit"
             disabled={submitting}
-            className="w-full py-3.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center justify-center gap-2 pt-4 mt-4"
+            className="w-full py-3.5 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center justify-center gap-2 pt-4 mt-4 cursor-pointer"
           >
             <Save size={16} /> {submitting ? "Saving..." : "Save Payout Account"}
           </button>

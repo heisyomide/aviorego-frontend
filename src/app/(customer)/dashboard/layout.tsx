@@ -4,7 +4,6 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '../../../context/AuthContext';
-import Navbar from '../../../components/home/Navbar';
 
 export default function CustomerDashboardLayout({
   children,
@@ -41,11 +40,8 @@ export default function CustomerDashboardLayout({
   return (
     <div className="min-h-screen bg-white text-neutral-950 font-sans flex flex-col justify-between antialiased">
       
-      {/* Top Navbar */}
-      <Navbar />
-
-      {/* Main Workspace Frame - Full Width, No Max-Width Box Constraints */}
-      <main className="flex-1 w-full py-2 pb-28">
+      {/* Main Workspace Frame - Zero top padding so HeroBanner touches the top edge */}
+      <main className="flex-1 w-full pt-0 pb-28">
         {children}
       </main>
 

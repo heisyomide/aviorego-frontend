@@ -63,7 +63,7 @@ export default function LiveOrderTrackerBanner() {
   }
 
   return (
-    <div className="w-full px-4 mb-4">
+    <div className="w-full px-4 py-9 mb-4">
       <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50/90 via-emerald-50/40 to-white p-4 shadow-sm transition-all">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           

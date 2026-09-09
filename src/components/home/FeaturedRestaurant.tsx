@@ -27,7 +27,7 @@ export default function FeaturedRestaurantsSection({ merchants = [], loading = f
   }));
 
   return (
-    <section className="py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-neutral-100 mt-4">
+    <section className="py-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-neutral-100 mt-4">
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="flex items-center gap-2">

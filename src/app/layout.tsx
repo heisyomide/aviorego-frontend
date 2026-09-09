@@ -14,6 +14,7 @@ import PushNotificationManager from "../components/PushNotificationManager";
 import RealtimeNotificationListener from "../components/RealtimeNotificationListener"; 
 import AppUpdateBanner from "../components/AppUpdateBanner";
 import UniversalBottomNav from "@/src/components/home/UniversalBottomNav";
+import { AppLocationProvider } from "../context/AppLocationContext";
 
 export const viewport: Viewport = {
   themeColor: "#16a34a",
@@ -174,22 +175,24 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-[#f8fafc] text-neutral-900 font-sans antialiased selection:bg-emerald-500 selection:text-white pb-24">
-        <ReactQueryProvider>
-          <AuthProvider>
-            <SplashGate>
-              {/* 🟢 App Update & Notification Managers */}
-              <AppUpdateBanner />
-              <PushNotificationManager />
-              <RealtimeNotificationListener />
-              
-              {/* Main App Workspace */}
-              {children}
+       <ReactQueryProvider>
+  <AuthProvider>
+    <AppLocationProvider>
+      <SplashGate>
+        {/* 🟢 App Update & Notification Managers */}
+        <AppUpdateBanner />
+        <PushNotificationManager />
+        <RealtimeNotificationListener />
+        
+        {/* Main App Workspace */}
+        {children}
 
-              {/* Universal Role-Based Bottom Navigation Bar */}
-              <UniversalBottomNav />
-            </SplashGate>
-          </AuthProvider>
-        </ReactQueryProvider>
+        {/* Universal Role-Based Bottom Navigation Bar */}
+        <UniversalBottomNav />
+      </SplashGate>
+    </AppLocationProvider>
+  </AuthProvider>
+</ReactQueryProvider>
       </body>
     </html>
   );

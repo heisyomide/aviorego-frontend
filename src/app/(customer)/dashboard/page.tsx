@@ -9,6 +9,7 @@ import PopularNearYouSection from "../../../components/home/PopularNearYou";
 import HomeServiceCardsSection from '@/src/components/home/HomeService';
 import LiveOrderTrackerBanner from '@/src/components/home/LiveOrder';
 import MoreFromAviorGo from '@/src/components/home/MoreFromAviorGo';
+import HeroBanner from '@/src/components/home/HeroBanner';
 
 export default function HomePage() {
   const [data, setData] = useState<any>(null);
@@ -29,15 +30,11 @@ export default function HomePage() {
 
   return (
     <>
-      <HomeSearchBarSection />
-      <HomeServiceCardsSection/>
+    <HeroBanner/>
       <LiveOrderTrackerBanner/>
-      <VerticalServicesSection />
+    
       <FeaturedRestaurantsSection merchants={data?.featuredMerchants || []} loading={loading} />
-      <PopularNearYouSection merchants={data?.nearbyMerchants || []} loading={loading} />
-      <PopularRestaurantsSection />
       <UpcomingEventsSection  />
-      <MoreFromAviorGo/>
     </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import {api} from "../../../lib/api"; // 👈 Using the central API client utility
+import { api } from "../../../lib/api";
 import { 
   Bell, 
   Power, 
@@ -22,6 +22,7 @@ export default function MerchantHomePage() {
   const [pipelineCounts, setPipelineCounts] = useState({ new: 0, preparing: 0, ready: 0, delivery: 0 });
   const [orders, setOrders] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [toggleError, setToggleError] = useState<string | null>(null);
 
   const fetchDashboardData = async () => {
     try {
@@ -45,24 +46,29 @@ export default function MerchantHomePage() {
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 15000); // Poll every 15s
+    const interval = setInterval(fetchDashboardData, 15000);
     return () => clearInterval(interval);
   }, []);
 
   const toggleStoreStatus = async () => {
     const nextState = !isStoreOpen;
     setIsStoreOpen(nextState); // Optimistic UI update
+    setToggleError(null);
+
     try {
       await api.patch("/merchant/dashboard/status", { isOpen: nextState });
-    } catch (err) {
+    } catch (err: any) {
       setIsStoreOpen(!nextState); // Rollback on failure
+      const message = err.response?.data?.message || "Failed to update store status based on operating hours.";
+      setToggleError(message);
+      setTimeout(() => setToggleError(null), 5000);
     }
   };
 
   const updateOrderStatus = async (orderId: string, nextStatus: string) => {
     try {
       await api.patch(`/merchant/dashboard/orders/${orderId}/status`, { status: nextStatus });
-      fetchDashboardData(); // Refresh state post-mutation
+      fetchDashboardData();
     } catch (err) {
       console.error("Failed to update order status", err);
     }
@@ -88,6 +94,14 @@ export default function MerchantHomePage() {
   return (
     <div className="space-y-6 pb-8">
       
+      {/* Schedule / Toggle Error Banner if Blocked */}
+      {toggleError && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl text-xs font-bold animate-in fade-in flex items-center justify-between">
+          <span>⚠️ {toggleError}</span>
+          <button onClick={() => setToggleError(null)} className="text-amber-900 font-black hover:opacity-75">✕</button>
+        </div>
+      )}
+
       {/* Merchant Header Command */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-neutral-200/80 p-6 rounded-3xl shadow-sm">
         <div className="flex items-center gap-3">
@@ -146,7 +160,6 @@ export default function MerchantHomePage() {
           </div>
         </div>
 
-        {/* Active Status Pipeline Mini breakdown */}
         <div className="grid grid-cols-4 gap-2 pt-2 border-t border-white/20">
           <div className="bg-white/10 backdrop-blur-sm p-2.5 rounded-2xl text-center">
             <span className="block text-sm font-black font-mono">{pipelineCounts.new}</span>
@@ -169,8 +182,6 @@ export default function MerchantHomePage() {
 
       {/* Sections Feed */}
       <div className="space-y-6">
-        
-        {/* New Orders Section */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-black text-neutral-950">New Orders</h2>
@@ -214,9 +225,7 @@ export default function MerchantHomePage() {
             ))
           )}
         </div>
-
       </div>
-
     </div>
   );
 }
