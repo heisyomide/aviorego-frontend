@@ -1,193 +1,177 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { api } from "@/src/lib/api";
-import { 
-  Flame, 
-  Search, 
-  ShoppingBag, 
-  Sparkles 
-} from "lucide-react";
-import FoodProductGrid, { FoodProductCardData } from "@/src/components/MerchantCardGrid";
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, MapPin, ChevronDown, Search, Star, Heart, Bike } from 'lucide-react';
+import { useAppLocation } from '@/src/context/AppLocationContext';
+import { api } from '@/src/lib/api'; // 👈 Import your configured Axios client
 
-interface CategoryObj {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface FoodItem {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl?: string;
-  description?: string;
-  category?: string;
-  subCategory?: string;
-  merchantId: string;
-  merchant?: {
-    id: string;
-    businessName: string;
-    address?: string;
-    coverUrl?: string;
-    logoUrl?: string;
-    rating?: number | string;
-    deliveryTime?: string;
-    isOpen?: boolean;
-  };
-}
-
-export default function FoodDirectoryPage() {
-  const [categories, setCategories] = useState<CategoryObj[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
-  const [loadingCategories, setLoadingCategories] = useState(true);
-  const [loadingItems, setLoadingItems] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+export default function RestaurantsPage() {
+  const router = useRouter();
+  const { appLocation, startChangingLocation } = useAppLocation();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/storefront/categories")
-      .then((res) => {
-        const data = res.data;
-        setCategories(Array.isArray(data) ? data : []);
-        setLoadingCategories(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load database categories:", err);
-        setLoadingCategories(false);
-      });
-  }, []);
+    async function fetchRestaurants() {
+      try {
+        setLoading(true);
+        // Use the axios `api` instance which points to your backend URL base
+        const res = await api.get(`/storefront/restaurants`, {
+          params: { search: searchQuery }
+        });
+        const json = res.data;
+        // Handle depending on whether your API returns the array directly or inside an object wrapper
+        setRestaurants(Array.isArray(json) ? json : json.data || []);
+      } catch (err) {
+        console.error('Failed to load restaurants', err);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  useEffect(() => {
-    setLoadingItems(true);
-    api.get(`/storefront/food-items?category=${selectedCategory}`)
-      .then((res) => {
-        const data = res.data;
-        setFoodItems(Array.isArray(data) ? data : []);
-        setLoadingItems(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load food items:", err);
-        setLoadingItems(false);
-      });
-  }, [selectedCategory]);
+    const timer = setTimeout(() => {
+      fetchRestaurants();
+    }, 300); // debounce search input
 
-  const filteredItems = foodItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (item.merchant?.businessName && item.merchant.businessName.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSearch;
-  });
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const formattedProducts: FoodProductCardData[] = filteredItems.map((item) => ({
-    id: item.id,
-    name: item.name,
-    description: item.merchant?.businessName || item.category || "Nigerian • Local",
-    imageUrl: item.imageUrl || item.merchant?.coverUrl,
-    price: item.price,
-    href: `/food/item/${item.id}`,
-  }));
+  const categories = ['All', 'Restaurants', 'Fast Food', 'Local Dishes', 'Grills'];
 
   return (
-    <div className="min-h-screen bg-neutral-50/50 pb-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
-        {/* Flashy Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-linear-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 text-orange-700 text-[11px] font-black tracking-wide">
-              <Sparkles className="w-3.5 h-3.5 text-orange-600 animate-pulse" />
-              <span>PREMIUM STOREFRONT DIRECTORY</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-black text-neutral-900 tracking-tight">
-              Explore Available Dishes
-            </h1>
-            <p className="text-xs sm:text-sm text-neutral-500 font-semibold">
-              Mouth-watering dishes, snacks, and top-rated local vendors near you.
-            </p>
-          </div>
-
+    <div className="min-h-screen bg-neutral-50 text-neutral-950 pb-24">
+      
+      {/* Top Header Bar */}
+      <div className="bg-white border-b border-neutral-200 sticky top-0 z-40 px-4 py-3">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
+          
           <div className="flex items-center gap-3">
-            <Link
-              href="/dashboard/orders"
-              className="inline-flex items-center gap-2 bg-linear-to-r from-neutral-900 to-neutral-800 hover:from-neutral-800 hover:to-neutral-700 text-white font-bold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-neutral-900/15 transition-all hover:scale-102"
-            >
-              <ShoppingBag size={15} className="text-orange-400" />
-              <span>My Food Orders</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Search & Flashy Horizontal Category Pills */}
-        <div className="space-y-4">
-          <div className="relative w-full sm:max-w-md">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500" />
-            <input
-              type="text"
-              placeholder="Search foods, dishes, or restaurants..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-neutral-200/80 rounded-2xl pl-11 pr-4 py-3.5 text-xs sm:text-sm font-bold text-neutral-900 shadow-xs focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
-            />
-          </div>
-
-          <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar pb-2 pt-1 -mx-4 px-4 sm:mx-0 sm:px-0">
             <button
-              onClick={() => setSelectedCategory("all")}
-              className={`group relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer border ${
-                selectedCategory === "all" 
-                  ? "bg-linear-to-r from-neutral-900 to-neutral-800 text-white shadow-lg shadow-neutral-900/20 font-black border-transparent scale-105 ring-2 ring-orange-500/50" 
-                  : "bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200/80 shadow-xs font-bold hover:border-orange-200"
+              type="button"
+              onClick={() => router.back()}
+              className="w-9 h-9 rounded-full bg-neutral-100 flex items-center justify-center hover:bg-neutral-200 transition-colors cursor-pointer"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <h1 className="text-base font-black tracking-tight">Restaurants</h1>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              startChangingLocation();
+              router.push('/location');
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-100 hover:bg-neutral-200 rounded-full text-xs font-bold text-neutral-800 transition-all max-w-[200px] cursor-pointer"
+          >
+            <MapPin size={13} className="text-emerald-600 shrink-0" />
+            <span className="truncate">{appLocation?.address || 'Select Address'}</span>
+            <ChevronDown size={12} className="shrink-0 text-neutral-500" />
+          </button>
+
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 pt-4 space-y-4">
+        
+        {/* Category Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                selectedCategory === cat
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-100'
               }`}
             >
-              <div className={`p-1.5 rounded-xl transition-transform group-hover:scale-110 ${selectedCategory === "all" ? "bg-white/20 text-white" : "bg-orange-50 text-orange-600 shadow-2xs"}`}>
-                <Flame size={16} />
-              </div>
-              <span className="text-[11px] tracking-tight">All Dishes</span>
+              {cat}
             </button>
-
-            {!loadingCategories && categories.map((cat, idx) => {
-              const categoryKey = cat.slug || cat.id || cat.name;
-              const isSelected = selectedCategory === categoryKey;
-              
-              const themes = [
-                "from-orange-500 to-amber-500 shadow-orange-500/25",
-                "from-rose-500 to-pink-500 shadow-rose-500/25",
-                "from-purple-500 to-indigo-500 shadow-purple-500/25",
-                "from-emerald-500 to-teal-500 shadow-emerald-500/25",
-                "from-blue-500 to-cyan-500 shadow-blue-500/25",
-              ];
-              const activeThemeClass = themes[idx % themes.length];
-
-              return (
-                <button
-                  key={cat.id || cat.slug}
-                  onClick={() => setSelectedCategory(categoryKey)}
-                  className={`group relative flex items-center gap-2 px-4 py-3 rounded-2xl transition-all duration-300 shrink-0 cursor-pointer border capitalize ${
-                    isSelected 
-                      ? `bg-linear-to-r ${activeThemeClass} text-white shadow-md font-black border-transparent scale-105 ring-2 ring-white/50` 
-                      : "bg-white hover:bg-neutral-50 text-neutral-800 border-neutral-200/80 shadow-xs font-bold hover:border-orange-200"
-                  }`}
-                >
-                  <div className={`p-1.5 rounded-xl transition-transform group-hover:scale-110 ${isSelected ? "bg-white/20 text-white" : "bg-neutral-100 text-neutral-600 shadow-2xs"}`}>
-                    <Sparkles size={16} />
-                  </div>
-                  <span className="text-[11px] tracking-tight">{cat.name}</span>
-                </button>
-              );
-            })}
-          </div>
+          ))}
         </div>
 
-        {/* Dynamic Refactored Grid Component */}
-        <div className="mt-4">
-          <FoodProductGrid
-            products={formattedProducts}
-            loading={loadingItems}
-            emptyTitle="No flashy dishes found under this category yet."
-            emptySubtitle="Try switching back to 'All Dishes' or adjust your search term to see more delicious meals!"
+        {/* Search Input Bar */}
+        <div className="relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search restaurants, cuisines, etc"
+            className="w-full bg-white border border-neutral-200 rounded-2xl pl-10 pr-4 py-3 text-xs font-medium focus:outline-none focus:border-emerald-600 shadow-xs"
           />
         </div>
+
+        {/* Vendors Section Header */}
+        <h2 className="text-sm font-black text-neutral-900 pt-2">All Vendors</h2>
+
+        {/* Vendor List Feed */}
+        {loading ? (
+          <div className="space-y-4 pt-4">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="w-full h-44 bg-neutral-200 animate-pulse rounded-2xl" />
+            ))}
+          </div>
+        ) : restaurants.length === 0 ? (
+          <div className="text-center py-16 text-neutral-400 text-xs font-bold">
+            No restaurants found. Try searching for something else!
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {restaurants.map((vendor) => (
+              <div
+                key={vendor.id}
+                onClick={() => router.push(`/food/restaurant/${vendor.id}`)}
+                className="bg-white border border-neutral-200/80 rounded-2xl p-4 shadow-xs hover:shadow-md transition-all cursor-pointer group"
+              >
+                {/* Vendor Cover / Banner Graphic */}
+                <div className="w-full h-36 bg-emerald-950 rounded-xl overflow-hidden relative flex items-center justify-center border border-neutral-100 mb-3">
+                  {vendor.logoUrl || vendor.bannerUrl ? (
+                    <img 
+                      src={vendor.logoUrl || vendor.bannerUrl} 
+                      alt={vendor.businessName} 
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform" 
+                    />
+                  ) : (
+                    <span className="text-base font-black text-emerald-100 px-4 text-center group-hover:scale-105 transition-transform">
+                      {vendor.businessName}
+                    </span>
+                  )}
+                </div>
+
+                {/* Vendor Info Row */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="text-sm font-black text-neutral-900 group-hover:text-emerald-700 transition-colors">
+                      {vendor.businessName}
+                    </h3>
+                    <div className="flex items-center gap-2 mt-1 text-[11px] font-bold text-neutral-500">
+                      <span className="flex items-center gap-1">
+                        <Bike size={13} className="text-emerald-600" /> {vendor.address || 'Delivery Available'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={(e) => { e.stopPropagation(); }} className="text-neutral-300 hover:text-rose-500 transition-colors">
+                      <Heart size={18} />
+                    </button>
+                    <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg border border-yellow-200/50">
+                      <Star size={12} className="fill-yellow-400 text-yellow-400" />
+                      <span className="text-xs font-black text-neutral-900">4.8</span>
+                      <span className="text-[10px] text-neutral-500 font-medium">(120+)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
       </div>
     </div>

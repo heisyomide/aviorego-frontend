@@ -28,13 +28,22 @@ export default function HomePage() {
       });
   }, []);
 
+  // Map backend properties (businessName, coverUrl, cuisineType) to frontend component expectation (name, imageUrl, description)
+  const formattedFeaturedMerchants = (data?.featuredMerchants || []).map((m: any) => ({
+    id: m.id,
+    name: m.businessName,
+    imageUrl: m.coverUrl || m.logoUrl,
+    description: m.cuisineType || "Restaurant • Meals",
+    address: m.address,
+  }));
+
   return (
     <>
-    <HeroBanner/>
+      <HeroBanner/>
       <LiveOrderTrackerBanner/>
     
-      <FeaturedRestaurantsSection merchants={data?.featuredMerchants || []} loading={loading} />
-      <UpcomingEventsSection  />
+      <FeaturedRestaurantsSection merchants={formattedFeaturedMerchants} loading={loading} />
+      <UpcomingEventsSection />
     </>
   );
 }

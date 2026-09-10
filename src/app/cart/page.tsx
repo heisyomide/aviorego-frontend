@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams, useParams } from "next/navigation";
 import { 
   ArrowLeft, 
   Trash2, 
@@ -16,6 +17,12 @@ import {
 import { api } from "@/src/lib/api";
 
 export default function CartCheckoutPage() {
+  const searchParams = useSearchParams();
+  const params = useParams();
+  
+  // Extract merchantId either from route dynamic params ([merchantId]) or query string (?merchantId=...)
+  const merchantId = (params?.merchantId as string) || searchParams.get("merchantId");
+
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deliveryAddress, setDeliveryAddress] = useState<string>("No default address set");
@@ -32,6 +39,11 @@ export default function CartCheckoutPage() {
 
   useEffect(() => {
     const fetchCartAndAddress = async () => {
+      if (!merchantId) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         let userLat: number = 7.7827; 
@@ -53,7 +65,8 @@ export default function CartCheckoutPage() {
 
         setUserCoords({ lat: userLat, lng: userLng });
 
-        const { data } = await api.get(`/cart?lat=${userLat}&lng=${userLng}`);
+        // Include merchantId and coordinates in the cart request
+        const { data } = await api.get(`/cart?merchantId=${merchantId}&lat=${userLat}&lng=${userLng}`);
         
         if (data) {
           syncPricingData(data);
@@ -66,7 +79,7 @@ export default function CartCheckoutPage() {
     };
 
     fetchCartAndAddress();
-  }, []);
+  }, [merchantId]);
 
   const syncPricingData = (data: any) => {
     setCartItems(data.items || []);
@@ -94,8 +107,8 @@ export default function CartCheckoutPage() {
     }
 
     try {
-      const queryParams = userCoords.lat && userCoords.lng ? `?lat=${userCoords.lat}&lng=${userCoords.lng}` : '';
-      const { data } = await api.post(`/cart/items${queryParams}`, {
+      const { data } = await api.post(`/cart/items`, {
+        merchantId,
         foodItemId,
         quantity: delta
       });
@@ -109,8 +122,7 @@ export default function CartCheckoutPage() {
 
   const removeItem = async (cartItemId: string) => {
     try {
-      const queryParams = userCoords.lat && userCoords.lng ? `?lat=${userCoords.lat}&lng=${userCoords.lng}` : '';
-      const { data } = await api.delete(`/cart/items/${cartItemId}${queryParams}`);
+      const { data } = await api.delete(`/cart/items/${cartItemId}?merchantId=${merchantId}`);
       if (data) {
         syncPricingData(data);
       }
@@ -124,6 +136,7 @@ export default function CartCheckoutPage() {
       setIsCheckingOut(true);
       const response = await api.post('/flutterwave/initialize', {
         cartCheckout: true,
+        merchantId,
         items: cartItems,
         redirectUrl: `${window.location.origin}/payment/verify`
       });
@@ -144,6 +157,19 @@ export default function CartCheckoutPage() {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
         <Loader2 size={32} className="animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  if (!merchantId) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center p-6 text-center">
+        <ShoppingBag size={36} className="text-neutral-300 mb-2" />
+        <h2 className="text-sm font-black text-neutral-900">Missing Restaurant Information</h2>
+        <p className="text-xs text-neutral-400 mt-1">Please select a restaurant to view your corresponding cart.</p>
+        <Link href="/food" className="mt-4 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl text-xs font-black shadow-md">
+          Back to Restaurants
+        </Link>
       </div>
     );
   }
@@ -275,7 +301,7 @@ export default function CartCheckoutPage() {
           <div className="py-24 text-center bg-white rounded-3xl border border-dashed border-neutral-200 space-y-3">
             <ShoppingBag size={36} className="mx-auto text-neutral-300" />
             <h2 className="text-sm font-black text-neutral-900">Your cart is empty</h2>
-            <p className="text-xs text-neutral-400">Add delicious meals from any verified vendor to get started.</p>
+            <p className="text-xs text-neutral-400">Add delicious meals from this kitchen to get started.</p>
             <div className="pt-2">
               <Link href="/" className="inline-block bg-emerald-600 text-white px-6 py-2.5 rounded-2xl text-xs font-black shadow-md">
                 Browse Restaurants

@@ -9,12 +9,14 @@ import {
   ShieldCheck, 
   Search, 
   Plus, 
+  Minus,
   Heart, 
   ShoppingBag,
   ArrowLeft,
   Share2,
   Loader2,
-  UtensilsCrossed
+  UtensilsCrossed,
+  X
 } from "lucide-react";
 import { api } from "@/src/lib/api";
 
@@ -28,6 +30,11 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
   const [activeTab, setActiveTab] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<any[]>([]);
+
+  // Modal State
+  const [selectedItem, setSelectedItem] = useState<any>(null);
+  const [modalQuantity, setModalQuantity] = useState(1);
+  const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
     if (merchantId) {
@@ -54,7 +61,9 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
 
   const fetchCartData = async () => {
     try {
-      const { data } = await api.get('/cart');
+      const { data } = await api.get('/cart', {
+        params: { merchantId }
+      });
       if (data && data.items) {
         setCart(data.items);
       }
@@ -63,17 +72,33 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const addToCart = async (item: any) => {
+  const handleOpenModal = (item: any) => {
+    setSelectedItem(item);
+    setModalQuantity(1);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedItem(null);
+    setModalQuantity(1);
+  };
+
+  const confirmAddToCart = async () => {
+    if (!selectedItem) return;
     try {
+      setIsAdding(true);
       const { data } = await api.post('/cart/items', {
-        foodItemId: item.id,
-        quantity: 1
+        foodItemId: selectedItem.id,
+        quantity: modalQuantity,
+        merchantId
       });
       if (data && data.items) {
         setCart(data.items);
       }
+      handleCloseModal();
     } catch (err) {
       console.error("Failed to add item to cart", err);
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -251,7 +276,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
                     <UtensilsCrossed size={24} className="text-neutral-300" />
                   )}
                   <button 
-                    onClick={() => addToCart(item)}
+                    onClick={() => handleOpenModal(item)}
                     className="absolute bottom-2 right-2 p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-md transition-transform hover:scale-110 cursor-pointer"
                     aria-label="Add item"
                   >
@@ -269,11 +294,87 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
+      {/* Quantity Selection Bottom Sheet Modal */}
+      {selectedItem && (
+        <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn">
+          <div className="bg-white w-full max-w-lg rounded-t-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-slideUp">
+            {/* Modal Header Image / Banner */}
+            <div className="relative h-56 w-full bg-neutral-100">
+              {selectedItem.imageUrl ? (
+                <img 
+                  src={selectedItem.imageUrl} 
+                  alt={selectedItem.name} 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-neutral-200">
+                  <UtensilsCrossed size={48} className="text-neutral-400" />
+                </div>
+              )}
+              <button 
+                onClick={handleCloseModal}
+                className="absolute top-4 right-4 p-2.5 bg-white/90 hover:bg-white text-neutral-800 rounded-full shadow-lg transition-transform hover:scale-105 cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 flex flex-col gap-6">
+              <div>
+                <h3 className="text-xl font-black text-neutral-900">{selectedItem.name}</h3>
+                <p className="text-xs text-neutral-500 font-medium mt-1">
+                  {selectedItem.description || "Freshly prepared and ready for delivery."}
+                </p>
+                <p className="text-base font-black text-neutral-900 mt-3">
+                  ₦{Number(selectedItem.price).toLocaleString()}
+                </p>
+              </div>
+
+              {/* Quantity Controls and Add Action */}
+              <div className="flex items-center justify-between gap-4 pt-4 border-t border-neutral-100">
+                <div className="flex items-center gap-4 bg-neutral-50 border border-neutral-200 rounded-2xl px-4 py-2.5">
+                  <button 
+                    onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
+                    disabled={modalQuantity <= 1}
+                    className="text-neutral-600 hover:text-neutral-900 disabled:opacity-30 cursor-pointer transition-colors"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus size={16} />
+                  </button>
+                  <span className="font-black text-sm text-neutral-900 w-6 text-center">{modalQuantity}</span>
+                  <button 
+                    onClick={() => setModalQuantity(modalQuantity + 1)}
+                    className="text-neutral-600 hover:text-neutral-900 cursor-pointer transition-colors"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+
+                <button
+                  onClick={confirmAddToCart}
+                  disabled={isAdding}
+                  className="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white py-3.5 px-6 rounded-2xl font-black text-sm shadow-lg shadow-emerald-700/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isAdding ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <span>Add ₦{(Number(selectedItem.price) * modalQuantity).toLocaleString()}</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating Cart Bar positioned cleanly above typical mobile navbars */}
       {totalCartCount > 0 && (
-        <div className="fixed bottom-20 left-0 right-0 z-50 px-4 flex justify-center pointer-events-none">
+        <div className="fixed bottom-20 left-0 right-0 z-40 px-4 flex justify-center pointer-events-none">
           <Link
-            href="/cart"
+            href={`/cart?merchantId=${merchantId}`}
             className="bg-neutral-900 hover:bg-black text-white px-6 py-4 rounded-3xl shadow-2xl flex items-center justify-between w-full max-w-md transition-all hover:scale-102 cursor-pointer border border-neutral-800 pointer-events-auto"
           >
             <div className="flex items-center gap-3">
