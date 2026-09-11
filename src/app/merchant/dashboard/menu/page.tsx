@@ -157,16 +157,35 @@ export default function MerchantMenuPage() {
     }));
   };
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    setFormData((prev) => ({
-      ...prev,
-      imageFile: file,
-      imageUrl: URL.createObjectURL(file), // Local preview
-    }));
-  };
+  // 1. Temporary local preview (safe for UI state preview only)
+  const previewUrl = URL.createObjectURL(file);
+  setFormData((prev) => ({ ...prev, imageUrl: previewUrl }));
+
+  try {
+    setUploadingImage(true);
+    const uploadData = new FormData();
+    uploadData.append('file', file);
+
+    // 2. Post to your backend upload endpoint
+    const { data } = await api.post('/uploads/menu-item', uploadData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    // 3. Replace blob URL with permanent Cloudinary secure URL
+    if (data && data.url) {
+      setFormData((prev) => ({ ...prev, imageUrl: data.url }));
+    }
+  } catch (err) {
+    console.error("Failed to upload image to Cloudinary", err);
+    alert("Image upload failed. Please try again.");
+  } finally {
+    setUploadingImage(false);
+  }
+};
 
   const refreshMenu = async () => {
     const { data } = await api.get<MenuItem[]>("/merchant/dashboard/menu");

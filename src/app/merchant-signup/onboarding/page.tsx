@@ -1,126 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
+import { usePlacesAutocomplete } from "../../(customer)/dashboard/shipment/hooks/usePlacesAutocomplete";
 
-// ==========================================
-// 1. PLACES AUTOCOMPLETE HOOK
-// ==========================================
-export interface PlaceSuggestion {
-  id: string;
-  name: string;
-  address: string;
-  city: string;
-  state: string;
-  country: string;
-  latitude: number;
-  longitude: number;
-  isVerifiedLandmark?: boolean;
-}
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
-export function usePlacesAutocomplete(defaultCity = "Abuja") {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
-  const [selectedPlace, setSelectedPlace] = useState<PlaceSuggestion | null>(null);
-  const debounce = useRef<NodeJS.Timeout | null>(null);
-
-  const search = useCallback(
-    (query: string) => {
-      setInput(query);
-      if (debounce.current) clearTimeout(debounce.current);
-
-      if (query.trim().length < 2) {
-        setSuggestions([]);
-        return;
-      }
-
-      debounce.current = setTimeout(async () => {
-        try {
-          setLoading(true);
-          const ramRes = await fetch(
-            `${API_BASE_URL}/landmarks/search?city=${encodeURIComponent(defaultCity)}&query=${encodeURIComponent(query)}`
-          );
-
-          if (ramRes.ok) {
-            const ramData = await ramRes.json();
-            if (Array.isArray(ramData) && ramData.length > 0) {
-              const ramResults: PlaceSuggestion[] = ramData.map((item: any) => ({
-                id: item.id,
-                name: item.name,
-                address: item.description || item.name,
-                city: item.city || defaultCity,
-                state: item.state || "FCT",
-                country: "Nigeria",
-                latitude: item.latitude,
-                longitude: item.longitude,
-                isVerifiedLandmark: true,
-              }));
-              setSuggestions(ramResults);
-              setLoading(false);
-              return;
-            }
-          }
-          
-          const photonRes = await fetch(
-            `https://photon.komoot.io/api/?q=${encodeURIComponent(`${query} ${defaultCity}`)}&limit=6`
-          );
-          const json = await photonRes.json();
-
-          const photonResults: PlaceSuggestion[] = json.features.map((feature: any) => ({
-            id: feature.properties.osm_id?.toString() ?? Math.random().toString(),
-            name: feature.properties.name || feature.properties.street || "Unknown Location",
-            address: feature.properties.street || feature.properties.name || "",
-            city: feature.properties.city || feature.properties.county || defaultCity,
-            state: feature.properties.state || "",
-            country: feature.properties.country || "Nigeria",
-            latitude: feature.geometry.coordinates[1],
-            longitude: feature.geometry.coordinates[0],
-            isVerifiedLandmark: false,
-          }));
-
-          setSuggestions(photonResults);
-        } catch (error) {
-          console.error("Error searching places:", error);
-          setSuggestions([]);
-        } finally {
-          setLoading(false);
-        }
-      }, 250);
-    },
-    [defaultCity]
-  );
-
-  const selectPlace = (place: PlaceSuggestion) => {
-    setSelectedPlace(place);
-    setInput([place.name, place.city].filter(Boolean).join(", "));
-    setSuggestions([]);
-  };
-
-  const clearSuggestions = () => setSuggestions([]);
-  const clearSelection = () => {
-    setSelectedPlace(null);
-    setInput("");
-    setSuggestions([]);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (debounce.current) clearTimeout(debounce.current);
-    };
-  }, []);
-
-  return { inputRef, input, setInput, loading, suggestions, selectedPlace, search, selectPlace, clearSuggestions, clearSelection };
-}
-
-
-// ==========================================
-// 2. MERCHANT ONBOARDING STEPPER
-// ==========================================
 export default function MerchantOnboardingStepper() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -128,7 +12,6 @@ export default function MerchantOnboardingStepper() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState('');
   
-  // Bank resolution state tracking
   const [banksList, setBanksList] = useState<{ code: string; name: string }[]>([]);
   const [isResolvingBank, setIsResolvingBank] = useState(false);
 
@@ -141,7 +24,6 @@ export default function MerchantOnboardingStepper() {
     email: '',
     logoUrl: '',
     coverUrl: '',
-    // Step 2 mappings
     address: '',
     state: 'FCT',
     city: 'Abuja',
@@ -149,7 +31,6 @@ export default function MerchantOnboardingStepper() {
     landmarkId: '',
     latitude: 9.0765,
     longitude: 7.3986,
-    // Step 3
     ownerFullName: '',
     ownerPhone: '',
     ownerEmail: '',
@@ -158,7 +39,6 @@ export default function MerchantOnboardingStepper() {
     idType: 'NIN',
     idNumber: '',
     idDocumentUrl: '',
-    // Step 4
     mainCategories: [] as string[],
     avgPrepTimeMinutes: 20,
     acceptsSameDay: true,
@@ -166,12 +46,10 @@ export default function MerchantOnboardingStepper() {
     openingDays: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'],
     openingTime: '08:00',
     closingTime: '21:00',
-    // Step 5
     accountNumber: '',
     accountName: '',
-    bankCode: '', // Flutterwave bank code requirement
+    bankCode: '',
     bankName: '',
-    // Step 6
     hasCac: false,
     cacNumber: '',
     cacCertificateUrl: '',
@@ -212,11 +90,10 @@ export default function MerchantOnboardingStepper() {
     }
   };
 
-const fetchBanks = async () => {
+  const fetchBanks = async () => {
     try {
       const res = await api.get('/flutterwave/banks');
       if (Array.isArray(res.data)) {
-        // Filter out duplicate bank codes to prevent React key collision errors
         const uniqueBanks = Array.from(
           new Map(res.data.map((bank: any) => [bank.code, bank])).values()
         );
@@ -227,7 +104,7 @@ const fetchBanks = async () => {
     }
   };
 
-const handleResolveBankAccount = async (accountNum: string, bankCode: string) => {
+  const handleResolveBankAccount = async (accountNum: string, bankCode: string) => {
     if (accountNum.length === 10 && bankCode) {
       try {
         setIsResolvingBank(true);
@@ -236,13 +113,12 @@ const handleResolveBankAccount = async (accountNum: string, bankCode: string) =>
           setFormData(prev => ({ ...prev, accountName: res.data.accountName }));
         }
       } catch {
-        // Fallback gracefully so the merchant can confirm manually if needed
+        // Fallback gracefully
       } finally {
         setIsResolvingBank(false);
       }
     }
   };
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -253,7 +129,6 @@ const handleResolveBankAccount = async (accountNum: string, bankCode: string) =>
       setFormData(prev => {
         const updated = { ...prev, [name]: value };
         
-        // If bank dropdown changes, update bankName label and trigger account resolution if 10 digits are filled
         if (name === 'bankCode') {
           const selectedBank = banksList.find(b => b.code === value);
           updated.bankName = selectedBank ? selectedBank.name : '';
@@ -262,7 +137,6 @@ const handleResolveBankAccount = async (accountNum: string, bankCode: string) =>
           }
         }
         
-        // If account number changes, trigger resolution if 10 digits are complete and bank code is selected
         if (name === 'accountNumber' && value.length === 10 && updated.bankCode) {
           handleResolveBankAccount(value, updated.bankCode);
         }
@@ -425,7 +299,6 @@ const handleResolveBankAccount = async (accountNum: string, bankCode: string) =>
                 </div>
               </div>
 
-              {/* Autocomplete Input Search */}
               <div className="relative">
                 <label className="block text-xs font-semibold text-zinc-700 mb-1">Search Landmark or Area *</label>
                 <input 
