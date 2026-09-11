@@ -16,7 +16,8 @@ import {
   Share2,
   Loader2,
   UtensilsCrossed,
-  X
+  X,
+  Check
 } from "lucide-react";
 import { api } from "@/src/lib/api";
 
@@ -31,10 +32,12 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<any[]>([]);
 
-  // Modal State
+  // Customization Modal State
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [modalQuantity, setModalQuantity] = useState(1);
+  const [selectedOptions, setSelectedOptions] = useState<{ [groupId: string]: string[] }>({});
   const [isAdding, setIsAdding] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (merchantId) {
@@ -75,22 +78,95 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
   const handleOpenModal = (item: any) => {
     setSelectedItem(item);
     setModalQuantity(1);
+    setValidationError(null);
+
+    const initialSelections: { [groupId: string]: string[] } = {};
+    if (item.customizationGroups) {
+      item.customizationGroups.forEach((group: any) => {
+        initialSelections[group.id] = [];
+      });
+    }
+    setSelectedOptions(initialSelections);
   };
 
   const handleCloseModal = () => {
     setSelectedItem(null);
     setModalQuantity(1);
+    setSelectedOptions({});
+    setValidationError(null);
+  };
+
+  const handleOptionToggle = (group: any, optionId: string) => {
+    setValidationError(null);
+    setSelectedOptions((prev) => {
+      const currentSelections = prev[group.id] || [];
+      const isSelected = currentSelections.includes(optionId);
+
+      if (group.maxSelections === 1) {
+        return {
+          ...prev,
+          [group.id]: isSelected ? [] : [optionId]
+        };
+      }
+
+      if (isSelected) {
+        return {
+          ...prev,
+          [group.id]: currentSelections.filter((id) => id !== optionId)
+        };
+      } else {
+        if (currentSelections.length >= group.maxSelections) {
+          return prev;
+        }
+        return {
+          ...prev,
+          [group.id]: [...currentSelections, optionId]
+        };
+      }
+    });
+  };
+
+  const calculateComputedPrice = () => {
+    if (!selectedItem) return 0;
+    let base = Number(selectedItem.price || 0);
+
+    if (selectedItem.customizationGroups) {
+      selectedItem.customizationGroups.forEach((group: any) => {
+        const chosenIds = selectedOptions[group.id] || [];
+        group.options.forEach((opt: any) => {
+          if (chosenIds.includes(opt.id)) {
+            base += Number(opt.price || 0);
+          }
+        });
+      });
+    }
+    return base * modalQuantity;
   };
 
   const confirmAddToCart = async () => {
     if (!selectedItem) return;
+
+    if (selectedItem.customizationGroups) {
+      for (const group of selectedItem.customizationGroups) {
+        const chosenCount = (selectedOptions[group.id] || []).length;
+        if (group.minSelections > 0 && chosenCount < group.minSelections) {
+          setValidationError(`Please make at least ${group.minSelections} selection(s) for "${group.name}".`);
+          return;
+        }
+      }
+    }
+
     try {
       setIsAdding(true);
+      const flatOptionIds = Object.values(selectedOptions).flat();
+
       const { data } = await api.post('/cart/items', {
         foodItemId: selectedItem.id,
         quantity: modalQuantity,
-        merchantId
+        merchantId,
+        customizationOptionIds: flatOptionIds
       });
+
       if (data && data.items) {
         setCart(data.items);
       }
@@ -102,10 +178,11 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
     }
   };
 
-  const categories = ["All", ...Array.from(new Set(menuItems.map((i) => i.subCategory?.name).filter(Boolean)))];
+  const categories = ["All", ...Array.from(new Set(menuItems.map((i) => i.subCategory?.name || i.category).filter(Boolean)))];
 
   const filteredMenu = menuItems.filter((item) => {
-    const matchesCategory = activeTab === "All" || item.subCategory?.name === activeTab;
+    const itemCat = item.subCategory?.name || item.category;
+    const matchesCategory = activeTab === "All" || itemCat === activeTab;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
@@ -129,11 +206,10 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
   }
 
   const totalCartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
-  const totalCartPrice = cart.reduce((sum, i) => sum + (Number(i.foodItem?.price || i.price || 0) * i.quantity), 0);
+  const totalCartPrice = cart.reduce((sum, i) => sum + (Number(i.totalPrice || i.foodItem?.price || i.price || 0) * i.quantity), 0);
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-36">
-      {/* Top Sticky Navigation Header */}
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-neutral-200/85 px-4 py-3">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link href="/" className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-full text-neutral-800 transition-colors">
@@ -151,7 +227,6 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
         </div>
       </header>
 
-      {/* Dynamic Cover Banner */}
       <div className="relative h-48 sm:h-64 w-full bg-neutral-200 overflow-hidden">
         <img 
           src={merchant.imageUrl || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1200&q=80"} 
@@ -161,7 +236,6 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/80 via-neutral-900/30 to-transparent"></div>
       </div>
 
-      {/* Dynamic Info Header Box */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 -mt-12 relative z-10">
         <div className="bg-white rounded-3xl border border-neutral-200/80 p-5 shadow-lg flex flex-col gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -177,7 +251,6 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
               <p className="text-xs text-neutral-500 font-medium mt-0.5">{merchant.description || "Authentic meals freshly prepared and delivered straight to your doorstep."}</p>
             </div>
 
-            {/* Rating Box */}
             <div className="flex items-center gap-3 bg-neutral-50 p-3 rounded-2xl border border-neutral-200/60 self-start sm:self-auto">
               <div className="flex items-center gap-1 text-base font-black text-neutral-900">
                 <Star size={16} className="fill-amber-400 text-amber-400" />
@@ -207,7 +280,6 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {/* Menu & Search Section */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 mt-6">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
@@ -238,26 +310,26 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
 
-        {/* Menu Items Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
           {filteredMenu.length > 0 ? (
             filteredMenu.map((item: any) => (
               <div
                 key={item.id}
-                className="bg-white rounded-3xl border border-neutral-200/80 p-4 shadow-2xs hover:shadow-lg transition-all duration-300 flex items-center justify-between gap-4 group"
+                className="bg-white rounded-3xl border border-neutral-200/80 p-4 shadow-2xs hover:shadow-lg transition-all duration-300 flex items-center justify-between gap-4 group cursor-pointer"
+                onClick={() => handleOpenModal(item)}
               >
                 <div className="flex flex-col flex-1 justify-between gap-2">
                   <div>
-                    {item.subCategory && (
+                    {(item.subCategory?.name || item.category) && (
                       <span className="text-[9px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full inline-block mb-1">
-                        {item.subCategory.name}
+                        {item.subCategory?.name || item.category}
                       </span>
                     )}
                     <h3 className="font-black text-neutral-900 text-sm group-hover:text-emerald-600 transition-colors">
                       {item.name}
                     </h3>
                     <p className="text-xs text-neutral-500 font-medium line-clamp-2 mt-1">
-                      Freshly made item ready for delivery.
+                      {item.description || "Freshly made item ready for delivery."}
                     </p>
                   </div>
                   <div className="flex items-center justify-between pt-2">
@@ -275,13 +347,11 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
                   ) : (
                     <UtensilsCrossed size={24} className="text-neutral-300" />
                   )}
-                  <button 
-                    onClick={() => handleOpenModal(item)}
+                  <div 
                     className="absolute bottom-2 right-2 p-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-md transition-transform hover:scale-110 cursor-pointer"
-                    aria-label="Add item"
                   >
                     <Plus size={16} />
-                  </button>
+                  </div>
                 </div>
               </div>
             ))
@@ -294,12 +364,12 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {/* Quantity Selection Bottom Sheet Modal */}
       {selectedItem && (
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn">
           <div className="bg-white w-full max-w-lg rounded-t-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-slideUp">
-            {/* Modal Header Image / Banner */}
-            <div className="relative h-56 w-full bg-neutral-100">
+            
+            {/* Modal Header Image with Fixed Explicit Height */}
+            <div className="relative h-48 w-full bg-neutral-100 shrink-0">
               {selectedItem.imageUrl ? (
                 <img 
                   src={selectedItem.imageUrl} 
@@ -320,8 +390,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 flex flex-col gap-6">
+            <div className="p-6 overflow-y-auto flex flex-col gap-6">
               <div>
                 <h3 className="text-xl font-black text-neutral-900">{selectedItem.name}</h3>
                 <p className="text-xs text-neutral-500 font-medium mt-1">
@@ -332,7 +401,68 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
                 </p>
               </div>
 
-              {/* Quantity Controls and Add Action */}
+              {selectedItem.customizationGroups && selectedItem.customizationGroups.length > 0 && (
+                <div className="space-y-6 pt-4 border-t border-neutral-100">
+                  {selectedItem.customizationGroups.map((group: any) => {
+                    const groupSelections = selectedOptions[group.id] || [];
+                    return (
+                      <div key={group.id} className="bg-neutral-50 border border-neutral-200/80 rounded-2xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-xs font-black text-neutral-900 uppercase tracking-wider">{group.name}</h4>
+                            <p className="text-[10px] text-neutral-500 font-semibold">
+                              {group.selectionType === "REQUIRED" ? "Required" : "Optional"} 
+                              {group.maxSelections > 1 ? ` • Choose up to ${group.maxSelections}` : " • Choose 1"}
+                            </p>
+                          </div>
+                          {group.selectionType === "REQUIRED" && (
+                            <span className="bg-rose-50 text-rose-700 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                              Required
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          {group.options.map((option: any) => {
+                            const isChecked = groupSelections.includes(option.id);
+                            return (
+                              <button
+                                key={option.id}
+                                type="button"
+                                onClick={() => handleOptionToggle(group, option.id)}
+                                className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                  isChecked 
+                                    ? "bg-emerald-50/80 border-emerald-500 text-emerald-950 font-bold" 
+                                    : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-100/50"
+                                }`}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
+                                    isChecked ? "bg-emerald-600 border-emerald-600 text-white" : "border-neutral-300 bg-white"
+                                  }`}>
+                                    {isChecked && <Check size={12} strokeWidth={3} />}
+                                  </div>
+                                  <span className="text-xs">{option.name}</span>
+                                </div>
+                                {Number(option.price) > 0 && (
+                                  <span className="text-xs font-bold text-neutral-600">+₦{Number(option.price).toLocaleString()}</span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {validationError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold rounded-xl text-center">
+                  {validationError}
+                </div>
+              )}
+
               <div className="flex items-center justify-between gap-4 pt-4 border-t border-neutral-100">
                 <div className="flex items-center gap-4 bg-neutral-50 border border-neutral-200 rounded-2xl px-4 py-2.5">
                   <button 
@@ -361,7 +491,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
                   {isAdding ? (
                     <Loader2 size={18} className="animate-spin" />
                   ) : (
-                    <span>Add ₦{(Number(selectedItem.price) * modalQuantity).toLocaleString()}</span>
+                    <span>Add ₦{calculateComputedPrice().toLocaleString()}</span>
                   )}
                 </button>
               </div>
@@ -370,7 +500,6 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
         </div>
       )}
 
-      {/* Floating Cart Bar positioned cleanly above typical mobile navbars */}
       {totalCartCount > 0 && (
         <div className="fixed bottom-20 left-0 right-0 z-40 px-4 flex justify-center pointer-events-none">
           <Link
