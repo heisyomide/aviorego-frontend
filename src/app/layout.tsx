@@ -29,30 +29,33 @@ const DOMAIN_URL = "https://www.aviorego.com.ng";
 export const metadata: Metadata = {
   metadataBase: new URL(DOMAIN_URL),
   title: {
-    default: "Aviorè Go | High-End Logistics, Event Fulfillment & Smart Delivery across Osun & Oyo",
+    default: "Aviorè Go | Order Food Online, High-End Logistics & Event Fulfillment in Osun & Oyo",
     template: "%s | Aviorè Go",
   },
   description:
-    "Nigeria's premier high-end logistics and event fulfillment ecosystem. Specializing in secure express parcel delivery, dedicated event transit management, real-time GPS tracking, and corporate supply chain solutions across Osun and Oyo State.",
+    "Order delicious meals from top local restaurants and kitchens with instant food delivery. Plus premier logistics, express parcel shipping, and dedicated event transit management across Osogbo, Ibadan, Osun, and Oyo State.",
   keywords: [
     "Aviorè Go",
     "Aviore",
+    "Food Delivery Osogbo",
+    "Order Food Online Ibadan",
+    "Best Restaurants Osun State",
+    "Food Marketplace Nigeria",
+    "Online Food Ordering Oyo",
     "High-End Logistics Nigeria",
     "Event Logistics Osogbo",
     "Ibadan Corporate Logistics",
     "Event Fulfillment Oyo",
     "Osun State Courier Service",
     "Secure Parcel Delivery Nigeria",
-    "Express Courier & Event Transit",
     "Same Day Delivery Osun",
     "Verified Courier Riders",
-    "Smart Supply Chain Solutions",
   ],
   authors: [{ name: "Aviorè", url: DOMAIN_URL }],
   creator: "Aviorè",
   publisher: "Aviorè",
   applicationName: "Aviorè Go",
-  category: "Logistics, Supply Chain & Event Operations",
+  category: "Food Marketplace, Logistics, Supply Chain & Event Operations",
   
   // 🟢 iOS / Safari PWA Installability Config
   appleWebApp: {
@@ -75,9 +78,9 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "Aviorè Go | High-End Logistics & Event Fulfillment Ecosystem",
+    title: "Aviorè Go | Food Marketplace, High-End Logistics & Event Fulfillment",
     description:
-      "Precision parcel delivery, robust event transit solutions, real-time GPS tracking, and enterprise-grade security across Osun & Oyo State.",
+      "Order food online from top local kitchens, enjoy lightning-fast delivery, precision parcel shipping, and robust event transit solutions across Osun & Oyo State.",
     url: DOMAIN_URL,
     siteName: "Aviorè Go",
     locale: "en_NG",
@@ -87,7 +90,7 @@ export const metadata: Metadata = {
         url: `${DOMAIN_URL}/images/og-image.jpg`,
         width: 1200,
         height: 630,
-        alt: "Aviorè Go High-End Logistics and Event Fulfillment",
+        alt: "Aviorè Go Food Delivery, Logistics and Event Fulfillment",
       },
     ],
   },
@@ -95,9 +98,9 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@aviorego",
     creator: "@aviore",
-    title: "Aviorè Go | High-End Logistics & Event Fulfillment",
+    title: "Aviorè Go | Food Delivery, Logistics & Event Fulfillment",
     description:
-      "Advanced parcel shipping, comprehensive event logistics, and real-time tracking across Osun & Oyo State.",
+      "Order food online, advanced parcel shipping, comprehensive event logistics, and real-time tracking across Osun & Oyo State.",
     images: [`${DOMAIN_URL}/images/og-image.jpg`],
   },
   icons: {
@@ -113,29 +116,54 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // 🟢 Advanced Rich Schema.org Structured Data for Local Business & Logistics Enterprise
+  // 🟢 Advanced Rich Schema.org Structured Data for Local Business, Food Service & Logistics Enterprise
   const jsonLd = {
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "LogisticsService",
-        "@id": `${DOMAIN_URL}/#logistics`,
+        "@type": ["LocalBusiness", "FoodEstablishment", "DeliveryService"],
+        "@id": `${DOMAIN_URL}/#business`,
         name: "Aviorè Go",
         url: DOMAIN_URL,
         logo: `${DOMAIN_URL}/images/logo.png`,
         image: `${DOMAIN_URL}/images/og-image.jpg`,
         description:
-          "High-end logistics, enterprise courier services, and specialized event fulfillment solutions across Osun and Oyo State.",
+          "Premier food ordering marketplace, high-end logistics, enterprise courier services, and specialized event fulfillment solutions across Osun and Oyo State.",
+        servesCuisine: "Local and Continental Cuisine",
+        priceRange: "₦₦",
         areaServed: [
           { "@type": "AdministrativeArea", name: "Osun State" },
           { "@type": "AdministrativeArea", name: "Oyo State" },
+          { "@type": "City", name: "Osogbo" },
+          { "@type": "City", name: "Ibadan" }
         ],
-        serviceType: [
-          "Parcel Courier",
-          "Express Delivery",
-          "Event Logistics & Transit Management",
-          "Corporate Supply Chain",
-        ],
+        hasOfferCatalog: {
+          "@type": "OfferCatalog",
+          name: "Aviorè Go Services",
+          itemListElement: [
+            {
+              "@type": "Offer",
+              itemOffered: {
+                "@type": "Service",
+                name: "Online Food Delivery & Marketplace"
+              }
+            },
+            {
+              "@type": "Offer",
+              itemOffered: {
+                "@type": "Service",
+                name: "Parcel Courier & Express Delivery"
+              }
+            },
+            {
+              "@type": "Offer",
+              itemOffered: {
+                "@type": "Service",
+                name: "Event Logistics & Transit Management"
+              }
+            }
+          ]
+        },
         provider: {
           "@type": "Organization",
           name: "Aviorè",
@@ -176,7 +204,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-[#f8fafc] text-neutral-900 font-sans antialiased selection:bg-emerald-500 selection:text-white pb-24">
        <ReactQueryProvider>
-  <AuthProvider>
+ <AuthProvider>
     <AppLocationProvider>
       <SplashGate>
         {/* 🟢 App Update & Notification Managers */}
@@ -191,7 +219,7 @@ export default function RootLayout({
         <UniversalBottomNav />
       </SplashGate>
     </AppLocationProvider>
-  </AuthProvider>
+ </AuthProvider>
 </ReactQueryProvider>
       </body>
     </html>
