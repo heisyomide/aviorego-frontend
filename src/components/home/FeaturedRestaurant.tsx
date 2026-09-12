@@ -32,7 +32,7 @@ export default function FeaturedRestaurantsSection({ merchants = [], loading = f
           <span className="text-base">✨</span>
         </div>
         <Link 
-          href="/food/featured" 
+          href="/food" 
           className="flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors"
         >
           <span>See All</span>
@@ -49,7 +49,7 @@ export default function FeaturedRestaurantsSection({ merchants = [], loading = f
       ) : displayMerchants.length > 0 ? (
         <div className="flex items-stretch gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
           {displayMerchants.map((merchant) => {
-            const merchantHref = merchant.href || `/food/merchant/${merchant.id}`;
+            const merchantHref = merchant.href || `/food/restaurant/${merchant.id}`;
             const imageUrl = merchant.imageUrl;
             const merchantName = merchant.name;
 

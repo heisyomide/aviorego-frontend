@@ -20,9 +20,9 @@ export default function CartCheckoutPage() {
   const searchParams = useSearchParams();
   const params = useParams();
   
-  // Extract merchantId either from route dynamic params ([merchantId]) or query string (?merchantId=...)
   const merchantId = (params?.merchantId as string) || searchParams.get("merchantId");
 
+  const [merchant, setMerchant] = useState<any>(null);
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deliveryAddress, setDeliveryAddress] = useState<string>("No default address set");
@@ -38,7 +38,7 @@ export default function CartCheckoutPage() {
   const [total, setTotal] = useState(0);
 
   useEffect(() => {
-    const fetchCartAndAddress = async () => {
+    const fetchCartAndData = async () => {
       if (!merchantId) {
         setLoading(false);
         return;
@@ -50,7 +50,11 @@ export default function CartCheckoutPage() {
         let userLng: number = 4.5418; 
 
         try {
-          const addressRes = await api.get('/profile/addresses');
+          const [addressRes, merchantRes] = await Promise.all([
+            api.get('/profile/addresses'),
+            api.get(`/storefront/merchants/${merchantId}`)
+          ]);
+
           if (addressRes.data && addressRes.data.length > 0) {
             const defaultAddr = addressRes.data.find((a: any) => a.isDefault) || addressRes.data[0];
             setDeliveryAddress(`${defaultAddr.street}, ${defaultAddr.city}`);
@@ -59,15 +63,17 @@ export default function CartCheckoutPage() {
               userLng = Number(defaultAddr.longitude);
             }
           }
+
+          if (merchantRes.data) {
+            setMerchant(merchantRes.data);
+          }
         } catch (err) {
-          console.error("Failed to fetch delivery addresses, using fallback coordinates", err);
+          console.error("Failed to fetch auxiliary cart data", err);
         }
 
         setUserCoords({ lat: userLat, lng: userLng });
 
-        // Include merchantId and coordinates in the cart request
         const { data } = await api.get(`/cart?merchantId=${merchantId}&lat=${userLat}&lng=${userLng}`);
-        
         if (data) {
           syncPricingData(data);
         }
@@ -78,7 +84,7 @@ export default function CartCheckoutPage() {
       }
     };
 
-    fetchCartAndAddress();
+    fetchCartAndData();
   }, [merchantId]);
 
   const syncPricingData = (data: any) => {
@@ -102,7 +108,6 @@ export default function CartCheckoutPage() {
   const updateQuantity = async (foodItemId: string, currentQty: number, delta: number) => {
     const newQty = currentQty + delta;
     if (newQty <= 0) {
-      removeItem(foodItemId);
       return;
     }
 
@@ -167,7 +172,7 @@ export default function CartCheckoutPage() {
         <ShoppingBag size={36} className="text-neutral-300 mb-2" />
         <h2 className="text-sm font-black text-neutral-900">Missing Restaurant Information</h2>
         <p className="text-xs text-neutral-400 mt-1">Please select a restaurant to view your corresponding cart.</p>
-        <Link href="/food" className="mt-4 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl text-xs font-black shadow-md">
+        <Link href="/" className="mt-4 bg-emerald-600 text-white px-6 py-2.5 rounded-2xl text-xs font-black shadow-md">
           Back to Restaurants
         </Link>
       </div>
@@ -189,6 +194,18 @@ export default function CartCheckoutPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 mt-6 space-y-6">
         {cartItems.length > 0 ? (
           <>
+            {merchant && (
+              <div className="bg-emerald-50/80 border border-emerald-200/60 rounded-3xl p-4 flex items-center justify-between shadow-2xs">
+                <div>
+                  <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">Ordering From</span>
+                  <h3 className="text-sm font-black text-neutral-900 mt-0.5">{merchant.businessName}</h3>
+                </div>
+                <Link href={`/food/merchant/${merchantId}`} className="text-xs font-bold text-emerald-600 hover:underline bg-white px-3 py-1.5 rounded-xl border border-emerald-200/60 shadow-2xs">
+                  Add more items
+                </Link>
+              </div>
+            )}
+
             <div className="bg-white rounded-3xl border border-neutral-200/80 p-5 shadow-2xs space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-black text-neutral-900">
@@ -217,38 +234,63 @@ export default function CartCheckoutPage() {
                   const price = Number(food.price || 0);
                   const imageUrl = food.imageUrl || "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&auto=format&fit=crop&q=60";
                   
+                  const optionsTotal = (item.customizationOptions || []).reduce((sum: number, opt: any) => {
+                    return sum + (Number(opt.option?.price || 0) * Number(opt.quantity || 1));
+                  }, 0);
+                  const itemLineTotal = (price + optionsTotal) * item.quantity;
+                  
                   return (
-                    <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
-                      <img src={imageUrl} alt={food.name || "Meal"} className="h-16 w-16 rounded-2xl object-cover shrink-0 bg-neutral-100" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Verified Kitchen</span>
-                        <h3 className="text-xs font-black text-neutral-900 truncate">{food.name || "Food Item"}</h3>
-                        <p className="text-xs font-black text-neutral-700 mt-1">₦{(price * item.quantity).toLocaleString()}</p>
-                      </div>
+                    <div key={item.id} className="py-4 first:pt-0 last:pb-0 flex flex-col gap-3">
+                      <div className="flex items-start justify-between gap-4">
+                        <img src={imageUrl} alt={food.name || "Meal"} className="h-16 w-16 rounded-2xl object-cover shrink-0 bg-neutral-100" />
+                        
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tight">Verified Kitchen</span>
+                          <h3 className="text-xs font-black text-neutral-900 truncate">{food.name || "Food Item"}</h3>
+                          <p className="text-xs font-black text-neutral-700 mt-1">₦{itemLineTotal.toLocaleString()}</p>
+                        </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex items-center bg-neutral-100 rounded-xl p-1 border border-neutral-200/60">
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center bg-neutral-100 rounded-xl p-1 border border-neutral-200/60">
+                            <button 
+                              onClick={() => updateQuantity(food.id, item.quantity, -1)}
+                              className="p-1 text-neutral-600 hover:bg-white rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Minus size={12} />
+                            </button>
+                            <span className="text-xs font-black px-2 text-neutral-900">{item.quantity}</span>
+                            <button 
+                              onClick={() => updateQuantity(food.id, item.quantity, 1)}
+                              className="p-1 text-neutral-600 hover:bg-white rounded-lg transition-colors cursor-pointer"
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                          
                           <button 
-                            onClick={() => updateQuantity(food.id, item.quantity, -1)}
-                            className="p-1 text-neutral-600 hover:bg-white rounded-lg transition-colors cursor-pointer"
+                            onClick={() => removeItem(item.id)}
+                            className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
                           >
-                            <Minus size={12} />
-                          </button>
-                          <span className="text-xs font-black px-2 text-neutral-900">{item.quantity}</span>
-                          <button 
-                            onClick={() => updateQuantity(food.id, item.quantity, 1)}
-                            className="p-1 text-neutral-600 hover:bg-white rounded-lg transition-colors cursor-pointer"
-                          >
-                            <Plus size={12} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
-                        <button 
-                          onClick={() => removeItem(item.id)}
-                          className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
                       </div>
+
+                      {item.customizationOptions && item.customizationOptions.length > 0 && (
+                        <div className="bg-neutral-50 rounded-2xl p-3 border border-neutral-100 space-y-1.5 ml-20">
+                          <span className="text-[10px] font-black uppercase text-neutral-400 tracking-wider">Customizations:</span>
+                          <div className="space-y-1">
+                            {item.customizationOptions.map((opt: any) => (
+                              <div key={opt.id} className="flex items-center justify-between text-[11px] text-neutral-600 font-medium">
+                                <span>• {opt.option?.name} {opt.quantity > 1 ? `(x${opt.quantity})` : ""}</span>
+                                {Number(opt.option?.price || 0) > 0 && (
+                                  <span className="text-neutral-500 font-bold">+₦{(Number(opt.option.price) * opt.quantity).toLocaleString()}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}

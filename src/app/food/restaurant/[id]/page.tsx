@@ -35,9 +35,34 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
   // Customization Modal State
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [modalQuantity, setModalQuantity] = useState(1);
-  const [selectedOptions, setSelectedOptions] = useState<{ [groupId: string]: string[] }>({});
+  const [selectedOptions, setSelectedOptions] = useState<{ [groupId: string]: { [optionId: string]: number } }>({});
   const [isAdding, setIsAdding] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Load draft from sessionStorage on modal open or mount
+  useEffect(() => {
+    if (!selectedItem) return;
+    const savedDraft = sessionStorage.getItem(`draft_cart_${merchantId}_${selectedItem.id}`);
+    if (savedDraft) {
+      try {
+        const { qty, options } = JSON.parse(savedDraft);
+        if (qty) setModalQuantity(qty);
+        if (options) setSelectedOptions(options);
+      } catch (e) {
+        console.error("Failed to parse draft cart state", e);
+      }
+    }
+  }, [selectedItem?.id, merchantId]);
+
+  // Save draft to sessionStorage on change
+  useEffect(() => {
+    if (!selectedItem) return;
+    const draftData = {
+      qty: modalQuantity,
+      options: selectedOptions,
+    };
+    sessionStorage.setItem(`draft_cart_${merchantId}_${selectedItem.id}`, JSON.stringify(draftData));
+  }, [modalQuantity, selectedOptions, selectedItem, merchantId]);
 
   useEffect(() => {
     if (merchantId) {
@@ -80,67 +105,101 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
     setModalQuantity(1);
     setValidationError(null);
 
-    const initialSelections: { [groupId: string]: string[] } = {};
+    const initialSelections: { [groupId: string]: { [optionId: string]: number } } = {};
     if (item.customizationGroups) {
       item.customizationGroups.forEach((group: any) => {
-        initialSelections[group.id] = [];
+        initialSelections[group.id] = {};
       });
     }
     setSelectedOptions(initialSelections);
   };
 
   const handleCloseModal = () => {
+    if (selectedItem) {
+      sessionStorage.removeItem(`draft_cart_${merchantId}_${selectedItem.id}`);
+    }
     setSelectedItem(null);
     setModalQuantity(1);
     setSelectedOptions({});
     setValidationError(null);
   };
 
+  const handleOptionQuantityChange = (group: any, optionId: string, delta: number) => {
+    setValidationError(null);
+    setSelectedOptions((prev) => {
+      const groupSelections = { ...(prev[group.id] || {}) };
+      const currentQty = groupSelections[optionId] || 0;
+      const newQty = currentQty + delta;
+
+      const totalSelectedInGroup = Object.entries(groupSelections).reduce(
+        (sum, [id, qty]) => sum + (id === optionId ? newQty : (qty as number)),
+        0
+      );
+
+      if (delta > 0 && group.maxSelections && totalSelectedInGroup > group.maxSelections) {
+        return prev;
+      }
+
+      if (newQty <= 0) {
+        delete groupSelections[optionId];
+      } else {
+        groupSelections[optionId] = newQty;
+      }
+
+      return {
+        ...prev,
+        [group.id]: groupSelections
+      };
+    });
+  };
+
   const handleOptionToggle = (group: any, optionId: string) => {
     setValidationError(null);
     setSelectedOptions((prev) => {
-      const currentSelections = prev[group.id] || [];
-      const isSelected = currentSelections.includes(optionId);
+      const groupSelections = { ...(prev[group.id] || {}) };
+      const currentQty = groupSelections[optionId] || 0;
 
       if (group.maxSelections === 1) {
-        return {
-          ...prev,
-          [group.id]: isSelected ? [] : [optionId]
-        };
+        if (currentQty > 0) {
+          return { ...prev, [group.id]: {} };
+        } else {
+          return { ...prev, [group.id]: { [optionId]: 1 } };
+        }
       }
 
-      if (isSelected) {
-        return {
-          ...prev,
-          [group.id]: currentSelections.filter((id) => id !== optionId)
-        };
+      if (currentQty > 0) {
+        delete groupSelections[optionId];
       } else {
-        if (currentSelections.length >= group.maxSelections) {
+        const totalSelected = Object.values(groupSelections).reduce((a, b) => (a as number) + (b as number), 0);
+        if (group.maxSelections && totalSelected >= group.maxSelections) {
           return prev;
         }
-        return {
-          ...prev,
-          [group.id]: [...currentSelections, optionId]
-        };
+        groupSelections[optionId] = 1;
       }
+
+      return { ...prev, [group.id]: groupSelections };
     });
   };
 
   const calculateComputedPrice = () => {
     if (!selectedItem) return 0;
-    let base = Number(selectedItem.price || 0);
+    
+    let baseTotal = Number(selectedItem.price || 0) * modalQuantity;
 
+    let optionsTotal = 0;
     if (selectedItem.customizationGroups) {
       selectedItem.customizationGroups.forEach((group: any) => {
-        const chosenIds = selectedOptions[group.id] || [];
+        const groupSelections = selectedOptions[group.id] || {};
         group.options.forEach((opt: any) => {
-          if (chosenIds.includes(opt.id)) {
-            base += Number(opt.price || 0);
+          const optQty = groupSelections[opt.id] || 0;
+          if (optQty > 0) {
+            optionsTotal += Number(opt.price || 0) * optQty;
           }
         });
       });
     }
-    return base * modalQuantity;
+
+    return baseTotal + optionsTotal;
   };
 
   const confirmAddToCart = async () => {
@@ -148,9 +207,11 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
 
     if (selectedItem.customizationGroups) {
       for (const group of selectedItem.customizationGroups) {
-        const chosenCount = (selectedOptions[group.id] || []).length;
-        if (group.minSelections > 0 && chosenCount < group.minSelections) {
-          setValidationError(`Please make at least ${group.minSelections} selection(s) for "${group.name}".`);
+        const groupSelections = selectedOptions[group.id] || {};
+        const totalChosenCount = Object.values(groupSelections).reduce((a, b) => (a as number) + (b as number), 0);
+        const minSelections = group.minSelections || 0;
+        if (minSelections > 0 && totalChosenCount < minSelections) {
+          setValidationError(`Please make at least ${minSelections} selection(s) for "${group.name}".`);
           return;
         }
       }
@@ -158,13 +219,19 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
 
     try {
       setIsAdding(true);
-      const flatOptionIds = Object.values(selectedOptions).flat();
+      
+      const customizations = Object.entries(selectedOptions).flatMap(([groupId, groupObj]) => 
+        Object.entries(groupObj).map(([optId, qty]) => ({
+          optionId: optId,
+          quantity: qty
+        }))
+      );
 
       const { data } = await api.post('/cart/items', {
         foodItemId: selectedItem.id,
         quantity: modalQuantity,
         merchantId,
-        customizationOptionIds: flatOptionIds
+        customizations
       });
 
       if (data && data.items) {
@@ -177,7 +244,7 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
       setIsAdding(false);
     }
   };
-
+  
   const categories = ["All", ...Array.from(new Set(menuItems.map((i) => i.subCategory?.name || i.category).filter(Boolean)))];
 
   const filteredMenu = menuItems.filter((item) => {
@@ -205,8 +272,11 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const totalCartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
-  const totalCartPrice = cart.reduce((sum, i) => sum + (Number(i.totalPrice || i.foodItem?.price || i.price || 0) * i.quantity), 0);
+  const totalCartCount = cart.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
+  
+  const totalCartPrice = cart.reduce((sum, i) => {
+    return sum + Number(i.lineTotal || 0);
+  }, 0);
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-36">
@@ -368,7 +438,6 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
         <div className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/60 backdrop-blur-xs transition-opacity animate-fadeIn">
           <div className="bg-white w-full max-w-lg rounded-t-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-slideUp">
             
-            {/* Modal Header Image with Fixed Explicit Height */}
             <div className="relative h-48 w-full bg-neutral-100 shrink-0">
               {selectedItem.imageUrl ? (
                 <img 
@@ -404,7 +473,9 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
               {selectedItem.customizationGroups && selectedItem.customizationGroups.length > 0 && (
                 <div className="space-y-6 pt-4 border-t border-neutral-100">
                   {selectedItem.customizationGroups.map((group: any) => {
-                    const groupSelections = selectedOptions[group.id] || [];
+                    const groupSelections = selectedOptions[group.id] || {};
+                    const isMultiQuantityAllowed = group.maxSelections > 1;
+
                     return (
                       <div key={group.id} className="bg-neutral-50 border border-neutral-200/80 rounded-2xl p-4 space-y-3">
                         <div className="flex items-center justify-between">
@@ -424,30 +495,57 @@ export default function RestaurantPage({ params }: { params: Promise<{ id: strin
 
                         <div className="space-y-2">
                           {group.options.map((option: any) => {
-                            const isChecked = groupSelections.includes(option.id);
+                            const optionQty = groupSelections[option.id] || 0;
+                            const isChecked = optionQty > 0;
+
                             return (
-                              <button
+                              <div
                                 key={option.id}
-                                type="button"
-                                onClick={() => handleOptionToggle(group, option.id)}
-                                className={`w-full flex items-center justify-between p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all ${
                                   isChecked 
                                     ? "bg-emerald-50/80 border-emerald-500 text-emerald-950 font-bold" 
                                     : "bg-white border-neutral-200 text-neutral-700 hover:bg-neutral-100/50"
                                 }`}
                               >
-                                <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOptionToggle(group, option.id)}
+                                  className="flex items-center gap-3 flex-1 text-left cursor-pointer"
+                                >
                                   <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-colors ${
                                     isChecked ? "bg-emerald-600 border-emerald-600 text-white" : "border-neutral-300 bg-white"
                                   }`}>
                                     {isChecked && <Check size={12} strokeWidth={3} />}
                                   </div>
                                   <span className="text-xs">{option.name}</span>
+                                </button>
+
+                                <div className="flex items-center gap-3">
+                                  {Number(option.price) > 0 && (
+                                    <span className="text-xs font-bold text-neutral-600">+₦{Number(option.price).toLocaleString()}</span>
+                                  )}
+                                  
+                                  {isMultiQuantityAllowed && isChecked && (
+                                    <div className="flex items-center gap-2 bg-white border border-neutral-200 rounded-lg px-2 py-1 shadow-2xs">
+                                      <button 
+                                        type="button"
+                                        onClick={() => handleOptionQuantityChange(group, option.id, -1)}
+                                        className="text-neutral-600 hover:text-neutral-900 cursor-pointer"
+                                      >
+                                        <Minus size={12} />
+                                      </button>
+                                      <span className="text-xs font-black w-4 text-center">{optionQty}</span>
+                                      <button 
+                                        type="button"
+                                        onClick={() => handleOptionQuantityChange(group, option.id, 1)}
+                                        className="text-neutral-600 hover:text-neutral-900 cursor-pointer"
+                                      >
+                                        <Plus size={12} />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
-                                {Number(option.price) > 0 && (
-                                  <span className="text-xs font-bold text-neutral-600">+₦{Number(option.price).toLocaleString()}</span>
-                                )}
-                              </button>
+                              </div>
                             );
                           })}
                         </div>
