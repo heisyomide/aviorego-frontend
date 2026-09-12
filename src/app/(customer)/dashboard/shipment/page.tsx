@@ -22,7 +22,7 @@ export default function ShipmentDashboardPage() {
   }));
 
   return (
-    <div className="space-y-4 px-3 sm:px-4 text-sm">
+    <div className="space-y-4 px-3 sm:px-4 py-7 text-sm">
       <ShipmentHeader
         onRefresh={refresh}
         onTrack={(trackingCode) => {
