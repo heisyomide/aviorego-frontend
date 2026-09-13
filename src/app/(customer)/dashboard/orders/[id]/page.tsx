@@ -14,7 +14,8 @@ import {
   CheckCircle2, 
   XCircle, 
   Bike,
-  Building2
+  Building2,
+  PackageCheck
 } from "lucide-react";
 
 interface OrderDetail {
@@ -23,6 +24,7 @@ interface OrderDetail {
   deliveryStatus: string;
   subtotal: number;
   deliveryFee: number;
+  statusMessage?: string;
   serviceFee: number;
   totalAmount: number;
   deliveryAddress: string;
@@ -97,31 +99,71 @@ export default function FoodOrderDetailsPage() {
       });
   }, [params?.id]);
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "DELIVERED":
+  const getMerchantStatusBadge = (status: string) => {
+    switch (status?.toUpperCase()) {
+      case "READY":
+      case "READY_FOR_PICKUP":
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-            <CheckCircle2 size={13} /> Delivered
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
+            <PackageCheck size={14} /> Restaurant: Food Ready
           </span>
         );
-      case "PROCESSING":
       case "PREPARING":
+      case "PROCESSING":
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-amber-500/10 text-amber-600 border border-amber-500/20 animate-pulse">
-            <Clock size={13} /> Preparing
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-amber-500/10 text-amber-700 border border-amber-500/20 animate-pulse">
+            <Clock size={14} /> Restaurant: Preparing Food
           </span>
         );
       case "CANCELLED":
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-rose-500/10 text-rose-600 border border-rose-500/20">
-            <XCircle size={13} /> Cancelled
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-rose-500/10 text-rose-700 border border-rose-500/20">
+            <XCircle size={14} /> Restaurant: Cancelled
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-black bg-orange-500/10 text-orange-600 border border-orange-500/20">
-            <Clock size={13} /> {status}
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-orange-500/10 text-orange-700 border border-orange-500/20">
+            <Clock size={14} /> Restaurant: {status || "Processing"}
+          </span>
+        );
+    }
+  };
+
+  const getDeliveryStatusBadge = (shipmentStatus?: string, deliveryStatus?: string) => {
+    const activeStatus = (shipmentStatus || deliveryStatus)?.toUpperCase();
+
+    switch (activeStatus) {
+      case "DELIVERED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-emerald-500/10 text-emerald-700 border border-emerald-500/20">
+            <CheckCircle2 size={14} /> Delivery: Completed
+          </span>
+        );
+      case "OUT_FOR_DELIVERY":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-orange-500/10 text-orange-700 border border-orange-500/20 animate-bounce">
+            <Bike size={14} /> Delivery: Arrived at Destination
+          </span>
+        );
+      case "ARRIVED_AT_PICKUP":
+      case "ARRIVED":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-blue-500/10 text-blue-700 border border-blue-500/20">
+            <Bike size={14} /> Delivery: At Pickup Location
+          </span>
+        );
+      case "PICKED_UP":
+      case "IN_TRANSIT":
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-purple-500/10 text-purple-700 border border-purple-500/20">
+            <Bike size={14} /> Delivery: On the Way
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black bg-blue-500/10 text-blue-700 border border-blue-500/20">
+            <Bike size={14} /> Delivery: Rider Assigned
           </span>
         );
     }
@@ -140,7 +182,7 @@ export default function FoodOrderDetailsPage() {
       <div className="max-w-xl mx-auto min-h-screen bg-neutral-50 p-6 text-center pt-24 space-y-4">
         <p className="text-rose-500 font-semibold">{error || "Order not found."}</p>
         <button
-          onClick={() => router.push("/food-orders")}
+          onClick={() => router.push("/dashboard/orders")}
           className="px-5 py-2.5 bg-orange-600 text-white rounded-xl text-xs font-bold shadow-md hover:bg-orange-700 transition"
         >
           Back to Orders
@@ -154,14 +196,15 @@ export default function FoodOrderDetailsPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         
         {/* Navigation & Header */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <button
-            onClick={() => router.push("/food-orders")}
+            onClick={() => router.push("/dashboard/orders")}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-600 hover:text-orange-700 transition-colors"
           >
             <ArrowLeft size={14} />
             <span>Back to My Orders</span>
           </button>
+          
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-neutral-900 tracking-tight">
@@ -171,8 +214,20 @@ export default function FoodOrderDetailsPage() {
                 Placed on {new Date(order.createdAt).toLocaleString()}
               </p>
             </div>
-            <div>{getStatusBadge(order.status)}</div>
+            
+            <div className="flex flex-col sm:items-end gap-2">
+              {getMerchantStatusBadge(order.status)}
+              {getDeliveryStatusBadge(order.shipment?.status, order.deliveryStatus)}
+            </div>
           </div>
+
+          {/* Dynamic Status Message Banner */}
+          {order.statusMessage && (
+            <div className="bg-orange-50 border border-orange-200/60 rounded-2xl p-4 flex items-center gap-3 text-orange-900 mt-3">
+              <Clock size={18} className="text-orange-600 shrink-0" />
+              <p className="text-xs sm:text-sm font-extrabold">{order.statusMessage}</p>
+            </div>
+          )}
         </div>
 
         {/* Verification PIN Banner */}
