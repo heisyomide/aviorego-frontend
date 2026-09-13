@@ -32,10 +32,11 @@ const getRedirectUrl = (user: UserPayload): string => {
       return user.status === 'PENDING_VERIFICATION' || user.status === 'PENDING'
         ? '/rider/onboarding'
         : '/rider/dashboard';
-    case 'MERCHANT':
-      return user.status === 'PENDING_VERIFICATION'
-        ? '/merchant/onboarding'
-        : '/merchant/dashboard';
+case 'MERCHANT':
+      if (user.status === 'PENDING_VERIFICATION' || user.status === 'PENDING') {
+        return '/merchant-signup/pending'; // <--- Routes unverified food merchants here
+      }
+      return '/merchant/dashboard';
     case 'ORGANIZER':
       return user.status === 'PENDING_VERIFICATION'
         ? '/organizer/onboarding'

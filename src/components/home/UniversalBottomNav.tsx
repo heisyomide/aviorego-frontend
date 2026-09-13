@@ -164,6 +164,7 @@ export default function UniversalBottomNav() {
       { name: 'Disputes', path: '/admin/disputes', icon: '⚖️' },
       { name: 'Reports', path: '/admin/reports', icon: '📊' },
       { name: 'Settings', path: '/admin/settings', icon: '🛠️' },
+      { name: 'Food Merchants', path: '/admin/merchants', icon: '🍽️' },
     ];
 
     return (

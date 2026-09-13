@@ -3,8 +3,7 @@
 import React, { useState } from 'react';
 import { api } from '../../../lib/api';
 
-// Channel and Audience Enums corresponding to backend Prisma/DTO schemas
-type TargetAudience = 'Everyone' | 'Customers' | 'Riders';
+type TargetAudience = 'Everyone' | 'Customers' | 'Riders' | 'Organizers' | 'Merchants';
 type BroadcastChannel = 'PUSH' | 'EMAIL';
 
 interface SupportTicket {
@@ -12,12 +11,11 @@ interface SupportTicket {
   code: string;
   subject: string;
   user: string;
-  role: 'Customer' | 'Rider';
+  role: 'Customer' | 'Rider' | 'Organizer' | 'Merchant';
   priority: 'High' | 'Medium' | 'Low';
 }
 
 export default function AdminSettingsPage() {
-  // Broadcast Form State
   const [target, setTarget] = useState<TargetAudience>('Everyone');
   const [channels, setChannels] = useState<BroadcastChannel[]>(['PUSH']);
   const [title, setTitle] = useState('');
@@ -25,7 +23,6 @@ export default function AdminSettingsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  // Mock Support Tickets
   const [tickets, setTickets] = useState<SupportTicket[]>([
     {
       id: '1',
@@ -43,19 +40,33 @@ export default function AdminSettingsPage() {
       role: 'Rider',
       priority: 'High',
     },
+    {
+      id: '3',
+      code: '#106',
+      subject: 'Event Validation Error',
+      user: 'Apex Events',
+      role: 'Organizer',
+      priority: 'Medium',
+    },
+    {
+      id: '4',
+      code: '#107',
+      subject: 'KYC Document Re-upload',
+      user: 'Kitchen 9ja',
+      role: 'Merchant',
+      priority: 'High',
+    },
   ]);
 
-  // Toggle Push/Email channels
   const handleChannelToggle = (channel: BroadcastChannel) => {
     if (channels.includes(channel)) {
-      if (channels.length === 1) return; // Must have at least one channel selected
+      if (channels.length === 1) return;
       setChannels(channels.filter((c) => c !== channel));
     } else {
       setChannels([...channels, channel]);
     }
   };
 
-  // Dispatch Broadcast to Backend API using shared Axios instance
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !body.trim()) {
@@ -66,16 +77,19 @@ export default function AdminSettingsPage() {
     setIsSubmitting(true);
     setFeedback(null);
 
-    // Map UI Selection to Prisma UserRole enum values
-    let targetAudienceValue: string | undefined = undefined;
-    if (target === 'Customers') targetAudienceValue = 'CUSTOMER';
-    if (target === 'Riders') targetAudienceValue = 'RIDER';
+    const targetAudienceMap: Record<TargetAudience, string | undefined> = {
+      Everyone: undefined,
+      Customers: 'CUSTOMER',
+      Riders: 'RIDER',
+      Organizers: 'ORGANIZER',
+      Merchants: 'MERCHANT',
+    };
 
     try {
       const response = await api.post('/admin/broadcast', {
         title,
         body,
-        targetAudience: targetAudienceValue,
+        targetAudience: targetAudienceMap[target],
         channels,
       });
 
@@ -111,7 +125,7 @@ export default function AdminSettingsPage() {
             Admin Hub
           </h2>
           <p className="text-xs text-neutral-500 font-medium">
-            System Operations, Broadcasts & Escalation Queue
+            System Operations, Multi-Audience Broadcasts & Escalation Queue
           </p>
         </div>
       </div>
@@ -145,8 +159,8 @@ export default function AdminSettingsPage() {
             <label className="block text-[10px] font-black uppercase text-neutral-400 mb-2">
               Target Audience
             </label>
-            <div className="flex gap-2">
-              {(['Customers', 'Riders', 'Everyone'] as TargetAudience[]).map((opt) => (
+            <div className="flex flex-wrap gap-2">
+              {(['Customers', 'Riders', 'Organizers', 'Merchants', 'Everyone'] as TargetAudience[]).map((opt) => (
                 <button
                   type="button"
                   key={opt}
