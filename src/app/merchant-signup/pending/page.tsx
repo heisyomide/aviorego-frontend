@@ -10,7 +10,7 @@ export default function MerchantPendingPage() {
   const handleLogout = () => {
     localStorage.removeItem('aviore_token');
     localStorage.removeItem('access_token');
-    router.push('/auth/login');
+    router.push('/login');
   };
 
   return (
