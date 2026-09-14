@@ -25,22 +25,20 @@ interface UserPayload {
 }
 
 const getRedirectUrl = (user: UserPayload): string => {
+  console.log('[Auth Redirect Debug] User payload:', user);
+  
+  const statusUpper = (user.status || '').toUpperCase();
+  const isPending = statusUpper === 'PENDING_VERIFICATION' || statusUpper === 'PENDING' || statusUpper === 'INCOMPLETE';
+
   switch (user.role) {
     case 'CUSTOMER':
       return '/dashboard';
     case 'RIDER':
-      return user.status === 'PENDING_VERIFICATION' || user.status === 'PENDING'
-        ? '/rider/onboarding'
-        : '/rider/dashboard';
-case 'MERCHANT':
-      if (user.status === 'PENDING_VERIFICATION' || user.status === 'PENDING') {
-        return '/merchant-signup/pending'; // <--- Routes unverified food merchants here
-      }
-      return '/merchant/dashboard';
+      return isPending ? '/rider/onboarding' : '/rider/dashboard';
+    case 'MERCHANT':
+      return isPending ? '/merchant-signup/pending' : '/merchant/dashboard';
     case 'ORGANIZER':
-      return user.status === 'PENDING_VERIFICATION'
-        ? '/organizer/onboarding'
-        : '/events/dashboard';
+      return isPending ? '/organizer/onboarding' : '/events/dashboard';
     case 'ADMIN':
     case 'SUPER_ADMIN':
       return '/admin/dashboard';
