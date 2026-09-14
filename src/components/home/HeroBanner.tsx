@@ -33,12 +33,12 @@ const HERO_SERVICES = [
     illustration: "🛒",
   },
   {
-    id: "tracking",
-    title: "Track Shipment",
-    action: (router: any) => router.push("/dashboard/shipment"),
-    bg: "bg-[#e3fafc]",
-    text: "text-[#0b4d59]",
-    illustration: "🧭",
+    id: "events",
+    title: "View Events",
+    action: (router: any) => router.push("/events"),
+    bg: "bg-[#f3f0ff]",
+    text: "text-[#3c096c]",
+    illustration: "🎉",
   },
 ];
 
@@ -191,7 +191,7 @@ export default function HeroBanner() {
 
           <button
             type="button"
-            onClick={() => router.push("/dashboard/food")}
+            onClick={() => router.push("/food")}
             className="shrink-0 bg-yellow-400 hover:bg-yellow-300 text-neutral-950 px-2.5 py-1.5 rounded-lg text-[10px] font-black shadow transition-all flex items-center gap-1 cursor-pointer group"
           >
             <span>Order</span>

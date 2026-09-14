@@ -11,8 +11,35 @@ import {
   Clock,
   Store,
   ChevronRight,
-  Loader2
+  Loader2,
+  Utensils,
+  Truck,
+  Check,
+  XCircle,
+  Package
 } from "lucide-react";
+
+interface OrderItem {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  selectedAddOns?: any;
+}
+
+interface Order {
+  id: string;
+  orderNumber: string;
+  createdAt: string;
+  merchantShare?: number;
+  subTotal?: number;
+  totalPrice?: number;
+  status: string;
+  deliveryStatus?: string;
+  deliveryAddress?: string;
+  items?: OrderItem[];
+  shipment?: any;
+}
 
 export default function MerchantHomePage() {
   const [loading, setLoading] = useState(true);
@@ -20,7 +47,8 @@ export default function MerchantHomePage() {
   const [storeName, setStoreName] = useState("Mama's Kitchen");
   const [metrics, setMetrics] = useState({ ordersCount: 0, revenue: 0, rating: 4.8 });
   const [pipelineCounts, setPipelineCounts] = useState({ new: 0, preparing: 0, ready: 0, delivery: 0 });
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [activeTab, setActiveTab] = useState<'ALL' | 'NEW' | 'PREPARING' | 'READY' | 'DELIVERY'>('ALL');
   const [error, setError] = useState<string | null>(null);
   const [toggleError, setToggleError] = useState<string | null>(null);
 
@@ -52,13 +80,13 @@ export default function MerchantHomePage() {
 
   const toggleStoreStatus = async () => {
     const nextState = !isStoreOpen;
-    setIsStoreOpen(nextState); // Optimistic UI update
+    setIsStoreOpen(nextState);
     setToggleError(null);
 
     try {
       await api.patch("/merchant/dashboard/status", { isOpen: nextState });
     } catch (err: any) {
-      setIsStoreOpen(!nextState); // Rollback on failure
+      setIsStoreOpen(!nextState);
       const message = err.response?.data?.message || "Failed to update store status based on operating hours.";
       setToggleError(message);
       setTimeout(() => setToggleError(null), 5000);
@@ -74,6 +102,19 @@ export default function MerchantHomePage() {
     }
   };
 
+  const getMerchantPayout = (ord: Order) => {
+    return Number(ord.merchantShare ?? (Number(ord.subTotal || 0) * 0.9));
+  };
+
+  const filteredOrders = orders.filter((o) => {
+    if (activeTab === 'ALL') return true;
+    if (activeTab === 'NEW') return o.status === 'PENDING' || o.status === 'NEW';
+    if (activeTab === 'PREPARING') return o.status === 'ACCEPTED' || o.status === 'PREPARING';
+    if (activeTab === 'READY') return o.status === 'READY_FOR_PICKUP' || o.status === 'READY' || o.status === 'ARRIVED_AT_HUB';
+    if (activeTab === 'DELIVERY') return o.status === 'OUT_FOR_DELIVERY' || o.deliveryStatus === 'OUT_FOR_DELIVERY';
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -82,19 +123,11 @@ export default function MerchantHomePage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="bg-rose-50 border border-rose-200 text-rose-700 p-6 rounded-3xl text-center space-y-2">
-        <h2 className="text-sm font-black">Dashboard Notice</h2>
-        <p className="text-xs">{error}</p>
-      </div>
-    );
-  }
+
 
   return (
     <div className="space-y-6 pb-8">
-      
-      {/* Schedule / Toggle Error Banner if Blocked */}
+      {/* Schedule / Toggle Error Banner */}
       {toggleError && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-2xl text-xs font-bold animate-in fade-in flex items-center justify-between">
           <span>⚠️ {toggleError}</span>
@@ -136,7 +169,7 @@ export default function MerchantHomePage() {
         </div>
       </div>
 
-      {/* Today's Overview Banner Card */}
+      {/* Today's Overview Banner Card (Net Payout Revenue) */}
       <div className="bg-gradient-to-r from-amber-600 to-amber-500 text-white p-6 rounded-3xl shadow-md space-y-4">
         <div className="flex items-center justify-between">
           <span className="text-xs font-mono font-bold uppercase tracking-wider text-amber-100">Today's Overview</span>
@@ -151,7 +184,7 @@ export default function MerchantHomePage() {
             <h3 className="text-2xl font-black font-mono">{metrics.ordersCount}</h3>
           </div>
           <div>
-            <span className="text-[11px] text-amber-100 font-mono">Revenue</span>
+            <span className="text-[11px] text-amber-100 font-mono">Net Payout</span>
             <h3 className="text-2xl font-black font-mono">₦{metrics.revenue.toLocaleString()}</h3>
           </div>
           <div>
@@ -180,51 +213,118 @@ export default function MerchantHomePage() {
         </div>
       </div>
 
-      {/* Sections Feed */}
-      <div className="space-y-6">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-black text-neutral-950">New Orders</h2>
-          </div>
+      {/* Order Pipeline Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {(['ALL', 'NEW', 'PREPARING', 'READY', 'DELIVERY'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all whitespace-nowrap ${
+              activeTab === tab
+                ? 'bg-neutral-950 text-white shadow-sm'
+                : 'bg-white border border-neutral-200 text-neutral-600 hover:bg-neutral-50'
+            }`}
+          >
+            {tab.charAt(0) + tab.slice(1).toLowerCase()}
+          </button>
+        ))}
+      </div>
 
-          {orders.filter(o => o.status === 'PENDING' || o.status === 'NEW').length === 0 ? (
-            <p className="text-xs text-neutral-400 bg-white border border-neutral-200/80 p-4 rounded-2xl text-center">No pending orders right now.</p>
-          ) : (
-            orders.filter(o => o.status === 'PENDING' || o.status === 'NEW').map((ord) => (
-              <div key={ord.id} className="bg-white border border-neutral-200/80 rounded-3xl p-5 shadow-sm space-y-3">
+      {/* Orders List Feed (Strictly Net Payout View) */}
+      <div className="space-y-4">
+        {filteredOrders.length === 0 ? (
+          <p className="text-xs text-neutral-400 bg-white border border-neutral-200/80 p-8 rounded-3xl text-center">
+            No orders found under &quot;{activeTab.toLowerCase()}&quot;.
+          </p>
+        ) : (
+          filteredOrders.map((ord) => {
+            const payoutAmount = getMerchantPayout(ord);
+            const isNew = ord.status === 'PENDING' || ord.status === 'NEW';
+            const isPreparing = ord.status === 'ACCEPTED' || ord.status === 'PREPARING';
+            const isReady = ord.status === 'READY_FOR_PICKUP' || ord.status === 'READY';
+
+            return (
+              <div key={ord.id} className="bg-white border border-neutral-200/80 rounded-3xl p-5 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-black bg-rose-500 text-white uppercase">NEW</span>
-                    <span className="text-xs font-mono font-black text-neutral-900">#{ord.id.slice(-6)}</span>
+                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-black bg-neutral-900 text-white uppercase">
+                      {ord.status}
+                    </span>
+                    <span className="text-xs font-mono font-black text-neutral-900">
+                      #{ord.orderNumber || ord.id.slice(-6).toUpperCase()}
+                    </span>
                   </div>
-                  <span className="text-[11px] font-mono text-neutral-400">{new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="text-[11px] font-mono text-neutral-400">
+                    {new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                 </div>
 
+                {/* Delivery Address */}
                 <div className="space-y-1">
+                  <p className="text-[11px] text-neutral-400 uppercase font-mono">Delivery Location</p>
                   <p className="text-xs font-bold text-neutral-900">{ord.deliveryAddress || "Standard Delivery Order"}</p>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-neutral-100">
-                  <span className="text-sm font-mono font-black text-neutral-950">Total: ₦{Number(ord.totalPrice || 0).toLocaleString()}</span>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => updateOrderStatus(ord.id, 'CANCELLED')}
-                      className="px-4 py-2 rounded-xl bg-neutral-100 hover:bg-rose-50 text-rose-600 text-xs font-bold transition-colors border border-neutral-200"
-                    >
-                      Reject
-                    </button>
-                    <button 
-                      onClick={() => updateOrderStatus(ord.id, 'ACCEPTED')}
-                      className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-sm"
-                    >
-                      Accept
-                    </button>
+                {/* Ordered Items Summary */}
+                {ord.items && ord.items.length > 0 && (
+                  <div className="bg-neutral-50 rounded-2xl p-3 space-y-1.5 border border-neutral-100">
+                    <p className="text-[10px] font-mono font-bold text-neutral-400 uppercase">Items Breakdown</p>
+                    {ord.items.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between text-xs text-neutral-700">
+                        <span>{item.quantity}x {item.name}</span>
+                        <span className="font-mono text-neutral-500">₦{(Number(item.price) * item.quantity).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Payout & Lifecycle Actions */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-3 border-t border-neutral-100 gap-3">
+                  <div>
+                    <span className="text-[10px] font-mono uppercase text-neutral-400 block">Your Net Payout</span>
+                    <span className="text-base font-mono font-black text-emerald-700">
+                      ₦{payoutAmount.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isNew && (
+                      <>
+                        <button 
+                          onClick={() => updateOrderStatus(ord.id, 'CANCELLED')}
+                          className="px-3.5 py-2 rounded-xl bg-neutral-100 hover:bg-rose-50 text-rose-600 text-xs font-bold transition-colors border border-neutral-200"
+                        >
+                          Reject
+                        </button>
+                        <button 
+                          onClick={() => updateOrderStatus(ord.id, 'ACCEPTED')}
+                          className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors shadow-sm"
+                        >
+                          Accept Order
+                        </button>
+                      </>
+                    )}
+
+                    {isPreparing && (
+                      <button 
+                        onClick={() => updateOrderStatus(ord.id, 'READY_FOR_PICKUP')}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors shadow-sm flex items-center gap-1.5"
+                      >
+                        <Check size={14} /> Mark Ready
+                      </button>
+                    )}
+
+                    {isReady && (
+                      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                        Waiting for Rider Pickup
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

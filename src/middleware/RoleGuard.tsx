@@ -29,8 +29,10 @@ export default function RoleGuard({ children, roles }: RoleGuardProps) {
         router.replace('/rider/dashboard');
       } else if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
         router.replace('/admin/dashboard');
-      } else if (role === 'ORGANIZER' || role === 'MERCHANT') {
+      } else if (role === 'ORGANIZER' ) {
         router.replace('/events/dashboard');
+           } else if (role === 'MERCHANT') {
+        router.replace('/merchant/dashboard');
       } else {
         router.replace('/dashboard');
       }

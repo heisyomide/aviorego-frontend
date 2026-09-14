@@ -25,7 +25,7 @@ export default function FeaturedRestaurantsSection({ merchants = [], loading = f
   const displayMerchants = merchants.slice(0, 5);
 
   return (
-    <section className="py-2 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2">
+    <section className="py-9 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-2">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1.5">
           <h2 className="text-lg font-black text-neutral-900 tracking-tight">Featured</h2>

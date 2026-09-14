@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Wallet, ArrowUpRight, CheckCircle2, ShieldCheck, Search, X, Loader2 } from "lucide-react";
+import { ArrowUpRight, Search, X, Loader2, ArrowDownLeft, RefreshCcw } from "lucide-react";
 import { api } from "@/src/lib/api";
 
 export default function MerchantWalletPage() {
   const [wallet, setWallet] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Withdrawal modal and form states
@@ -15,6 +17,7 @@ export default function MerchantWalletPage() {
   const [bankCode, setBankCode] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'error' | 'success'; message: string } | null>(null);
 
   useEffect(() => {
     fetchWalletData();
@@ -24,12 +27,12 @@ export default function MerchantWalletPage() {
     try {
       setLoading(true);
       const [walletRes, txRes] = await Promise.all([
-        api.get('/merchant/dashboard/wallet'),
-        api.get('/merchant/dashboard/transactions'),
+        api.get('/merchant/wallet'),
+        api.get('/merchant/wallet/transactions'),
       ]);
       setWallet(walletRes.data);
-      setTransactions(txRes.data || []);
-    } catch (err) {
+      setTransactions(Array.isArray(txRes.data) ? txRes.data : []);
+    } catch (err: any) {
       console.error("Failed to load wallet data", err);
     } finally {
       setLoading(false);
@@ -39,6 +42,7 @@ export default function MerchantWalletPage() {
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setFeedback(null);
 
     try {
       await api.post('/flutterwave/withdraw', {
@@ -51,15 +55,25 @@ export default function MerchantWalletPage() {
       setAmount("");
       setBankCode("");
       setAccountNumber("");
+      setFeedback({ type: 'success', message: 'Withdrawal request submitted successfully.' });
       fetchWalletData();
-    } catch (err) {
-      console.error("Withdrawal failed", err);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err?.response?.data?.message || 'Withdrawal failed. Check balance and details.' });
     } finally {
       setSubmitting(false);
     }
   };
 
   const availableBalance = wallet?.availableBalance ?? 0;
+
+  const filteredTransactions = transactions.filter((tx) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (tx.description && tx.description.toLowerCase().includes(q)) ||
+      (tx.referenceCode && tx.referenceCode.toLowerCase().includes(q)) ||
+      (tx.type && tx.type.toLowerCase().includes(q))
+    );
+  });
 
   if (loading && !wallet) {
     return (
@@ -71,30 +85,63 @@ export default function MerchantWalletPage() {
 
   return (
     <div className="space-y-6 pb-8">
-      
-      {/* Header matching Prototype */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-black tracking-tight text-neutral-950">Wallet</h1>
-        <div className="p-2 rounded-xl bg-white border border-neutral-200 text-neutral-600 shadow-sm cursor-pointer hover:bg-neutral-50">
-          <Search size={18} />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
+            className="p-2 rounded-xl bg-white border border-neutral-200 text-neutral-600 shadow-sm cursor-pointer hover:bg-neutral-50"
+            title="Search transactions"
+          >
+            <Search size={18} />
+          </button>
+          <button
+            onClick={fetchWalletData}
+            className="p-2 rounded-xl bg-white border border-neutral-200 text-neutral-600 shadow-sm cursor-pointer hover:bg-neutral-50"
+            title="Refresh"
+          >
+            <RefreshCcw size={18} />
+          </button>
         </div>
       </div>
 
-      {/* Main Available Balance Card matching Prototype */}
+      {feedback && (
+        <div className={`p-4 rounded-2xl text-xs font-bold ${feedback.type === 'error' ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+          {feedback.message}
+        </div>
+      )}
+
+      {isSearchOpen && (
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by description, reference, or type..."
+            className="w-full px-4 py-3 rounded-2xl bg-white border border-neutral-200 text-xs font-medium focus:outline-none focus:border-emerald-600 shadow-sm"
+          />
+        </div>
+      )}
+
+      {/* Main Available Balance Card */}
       <div className="bg-emerald-600 text-white p-6 rounded-3xl shadow-lg flex items-center justify-between gap-4">
         <div className="space-y-1">
           <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-100">Available Balance</span>
           <h3 className="text-3xl font-black font-mono">₦{Number(availableBalance).toLocaleString()}</h3>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="px-5 py-2.5 rounded-xl bg-white text-emerald-700 font-bold text-xs hover:bg-emerald-50 transition-colors shadow-sm"
+        <button
+          onClick={() => {
+            setFeedback(null);
+            setIsModalOpen(true);
+          }}
+          className="px-5 py-2.5 rounded-xl bg-white text-emerald-700 font-bold text-xs hover:bg-emerald-50 transition-colors shadow-sm cursor-pointer"
         >
           Withdraw
         </button>
       </div>
 
-      {/* Stats Breakdown Row matching Prototype */}
+      {/* Stats Breakdown Row */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white border border-neutral-200/80 p-4 rounded-3xl shadow-sm space-y-1">
           <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase">Today's Earnings</span>
@@ -108,40 +155,52 @@ export default function MerchantWalletPage() {
         <div className="bg-white border border-neutral-200/80 p-4 rounded-3xl shadow-sm space-y-1">
           <span className="text-[10px] font-mono font-bold text-neutral-400 uppercase">Total Earned</span>
           <h4 className="text-base font-black text-neutral-950 font-mono">₦{Number(wallet?.totalEarned || 0).toLocaleString()}</h4>
-          <span className="text-[9px] text-neutral-400 block">This Month</span>
+          <span className="text-[9px] text-neutral-400 block">Cumulative</span>
         </div>
       </div>
 
-      {/* Recent Transactions List matching Prototype */}
+      {/* Recent Transactions List */}
       <div className="bg-white border border-neutral-200/80 rounded-3xl p-5 shadow-sm space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-black text-neutral-950">Recent Transactions</h3>
-          <button className="text-xs font-bold text-emerald-600 hover:underline">See all</button>
+          <span className="text-[10px] font-mono text-neutral-400">{filteredTransactions.length} items</span>
         </div>
-        
+
         <div className="space-y-3">
-          {transactions.length === 0 ? (
-            <div className="text-center py-6 text-xs text-neutral-400 font-medium">
-              No recent transactions recorded.
+          {filteredTransactions.length === 0 ? (
+            <div className="text-center py-8 text-xs text-neutral-400 font-medium">
+              No transactions matching your record found.
             </div>
           ) : (
-            transactions.map((tx: any, idx: number) => (
-              <div key={idx} className="flex items-center justify-between p-3.5 rounded-2xl bg-neutral-50/80 border border-neutral-100">
-                <div className="space-y-0.5">
-                  <span className="text-xs font-bold text-neutral-900 block">{tx.type}</span>
-                  <span className="text-[10px] font-mono text-neutral-400 block">{tx.date}</span>
-                </div>
+            filteredTransactions.map((tx: any) => {
+              const isCredit = tx.type === 'CREDIT' || tx.type === 'DEPOSIT' || Number(tx.amount) > 0;
+              const numericAmount = Math.abs(Number(tx.amount || 0));
 
-                <div className="text-right">
-                  <span className={`text-xs font-mono font-black ${tx.amount > 0 ? 'text-emerald-600' : 'text-neutral-900'}`}>
-                    {tx.amount > 0 ? `+₦${Number(tx.amount).toLocaleString()}` : `-₦${Math.abs(Number(tx.amount)).toLocaleString()}`}
-                  </span>
-                  <span className="block text-[10px] font-bold text-neutral-500 pt-0.5">
-                    {tx.status}
-                  </span>
+              return (
+                <div key={tx.id || Math.random()} className="flex items-center justify-between p-3.5 rounded-2xl bg-neutral-50/80 border border-neutral-100">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${isCredit ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                      {isCredit ? <ArrowDownLeft size={16} /> : <ArrowUpRight size={16} />}
+                    </div>
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-neutral-900 truncate">{tx.description || tx.type}</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-neutral-400 block">{tx.date} • {tx.referenceCode}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className={`text-xs font-mono font-black ${isCredit ? 'text-emerald-600' : 'text-neutral-900'}`}>
+                      {isCredit ? `+₦${numericAmount.toLocaleString()}` : `-₦${numericAmount.toLocaleString()}`}
+                    </span>
+                    <span className="block text-[10px] font-bold text-neutral-500 pt-0.5 uppercase">
+                      {tx.type}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -152,9 +211,9 @@ export default function MerchantWalletPage() {
           <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-6 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-black text-neutral-950">Withdraw Funds</h2>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
-                className="p-2 rounded-xl text-neutral-400 hover:bg-neutral-100"
+                className="p-2 rounded-xl text-neutral-400 hover:bg-neutral-100 cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -163,46 +222,47 @@ export default function MerchantWalletPage() {
             <form onSubmit={handleWithdraw} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-neutral-700">Amount (₦)</label>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   required
+                  min={100}
                   max={availableBalance}
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter amount to withdraw" 
+                  placeholder="Enter amount to withdraw"
                   className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm font-medium focus:outline-none focus:border-emerald-600"
                 />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-neutral-700">Bank Code</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   value={bankCode}
                   onChange={(e) => setBankCode(e.target.value)}
-                  placeholder="e.g. 058 (GTB)" 
+                  placeholder="e.g. 058 (GTB)"
                   className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm font-medium focus:outline-none focus:border-emerald-600"
                 />
               </div>
 
               <div className="space-y-1">
                 <label className="text-xs font-bold text-neutral-700">Account Number</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   required
                   maxLength={10}
                   value={accountNumber}
                   onChange={(e) => setAccountNumber(e.target.value)}
-                  placeholder="0123456789" 
+                  placeholder="0123456789"
                   className="w-full px-4 py-3 rounded-xl border border-neutral-200 text-sm font-medium focus:outline-none focus:border-emerald-600"
                 />
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 disabled={submitting}
-                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 mt-4"
+                className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-sm shadow-sm transition-colors flex items-center justify-center gap-2 mt-4 cursor-pointer"
               >
                 {submitting && <Loader2 size={16} className="animate-spin" />}
                 Confirm Withdrawal
@@ -211,7 +271,6 @@ export default function MerchantWalletPage() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
