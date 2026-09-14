@@ -68,7 +68,7 @@ const userRole = data.user?.role?.toUpperCase();
 let redirectPath = '/dashboard'; // Default fallback
 
 if (userRole === 'MERCHANT') {
-  redirectPath = '/merchant/onboarding';
+  redirectPath = '/merchant-signup/onboarding';
 } else if (userRole === 'ORGANIZER') {
   redirectPath = '/organizer/onboarding';
 } else if (userRole === 'RIDER') {
