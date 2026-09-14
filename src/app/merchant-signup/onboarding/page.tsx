@@ -225,7 +225,7 @@ export default function MerchantOnboardingStepper() {
           cacCertificateUrl: formData.hasCac ? formData.cacCertificateUrl : undefined,
           termsAccepted: formData.termsAccepted,
         });
-        router.push('/merchant/dashboard');
+        router.push('/merchant-signup/pending');
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update onboarding step.');
