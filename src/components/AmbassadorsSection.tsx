@@ -27,7 +27,7 @@ const ambassadors = [
   },
 
   {
-    name: "Oke Anjolaoluwa",
+    name: "Oke Adejolaoluwa",
     role: "AviorèGo Growth Partner",
     description:
       "Showing you the best of our city.",

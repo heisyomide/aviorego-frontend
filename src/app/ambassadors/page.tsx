@@ -33,7 +33,7 @@ const ambassadors = [
 },
 {
   id: 4,
-  name: "Oke Anjolaoluwa",
+  name: "Oke Adejolaoluwa",
   role: "AviorèGo Growth Partner",
   image: "/images/jola.jpeg",
   bio: "Public Health practitioner and entrepreneur passionate about innovation, partnerships, and creating opportunities for business growth.",
