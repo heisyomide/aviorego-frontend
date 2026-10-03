@@ -1,199 +1,321 @@
-"use client";
-
 import Link from "next/link";
-import {
-  FileText,
-  ShieldAlert,
-  CreditCard,
-  Truck,
-  Scale,
-  AlertTriangle,
-  Mail,
-  ArrowLeft,
-  CheckCircle2,
-} from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import Footer from "@/src/components/Footer";
+
+const sections = [
+  {
+    title: "1. Acceptance of Terms",
+    content: (
+      <p>
+        By accessing or using AviorèGo, you agree to be bound by these Terms
+        and Conditions. If you do not agree with any part of these terms,
+        please do not use our services.
+      </p>
+    ),
+  },
+  {
+    title: "2. About AviorèGo",
+    content: (
+      <>
+        <p>
+          AviorèGo is a technology platform that connects customers with
+          services including food marketplace, local delivery, and event
+          logistics.
+        </p>
+
+        <p className="mt-4">
+          Our platform may connect customers with restaurants, vendors,
+          delivery partners, event service providers, and other participating
+          businesses.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "3. Use of Our Services",
+    content: (
+      <>
+        <p>
+          You agree to use AviorèGo only for lawful purposes and in accordance
+          with these Terms.
+        </p>
+
+        <ul className="mt-4 list-disc space-y-2 pl-5">
+          <li>Provide accurate information when creating an account.</li>
+          <li>Keep your account information secure.</li>
+          <li>Use the platform responsibly and respectfully.</li>
+          <li>Do not misuse, disrupt, or attempt to compromise the platform.</li>
+          <li>Do not use another person&apos;s account without permission.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    title: "4. Accounts",
+    content: (
+      <p>
+        Some AviorèGo services require you to create an account. You are
+        responsible for maintaining the confidentiality of your account
+        information and for activities carried out through your account.
+        Please notify us if you believe your account has been accessed without
+        your authorization.
+      </p>
+    ),
+  },
+  {
+    title: "5. Orders, Deliveries and Services",
+    content: (
+      <>
+        <p>
+          When you place an order or request a service through AviorèGo, you
+          agree to provide accurate delivery, contact, and service information.
+        </p>
+
+        <p className="mt-4">
+          Availability, pricing, estimated delivery times, and other service
+          details may vary depending on the vendor, delivery partner,
+          location, demand, and other circumstances.
+        </p>
+      </>
+    ),
+  },
+  {
+    title: "6. Payments and Charges",
+    content: (
+      <p>
+        Applicable prices, delivery charges, service fees, and other charges
+        will be displayed where applicable before you complete a transaction.
+        You agree to provide valid payment information and authorize the
+        applicable charges for services you request.
+      </p>
+    ),
+  },
+  {
+    title: "7. Vendors and Service Partners",
+    content: (
+      <p>
+        AviorèGo may work with independent restaurants, vendors, delivery
+        partners, event providers, and other businesses. Information about
+        products and services may be supplied by these partners, and their
+        availability and fulfillment may depend on their individual
+        operations.
+      </p>
+    ),
+  },
+  {
+    title: "8. Cancellations and Refunds",
+    content: (
+      <p>
+        Cancellation, refund, replacement, or adjustment policies may vary
+        depending on the service or vendor involved. Where a specific
+        cancellation or refund policy applies, it will be communicated through
+        the relevant service or transaction.
+      </p>
+    ),
+  },
+  {
+    title: "9. Prohibited Activities",
+    content: (
+      <>
+        <p>You must not use AviorèGo to:</p>
+
+        <ul className="mt-4 list-disc space-y-2 pl-5">
+          <li>Break any applicable law or regulation.</li>
+          <li>Submit fraudulent or misleading information.</li>
+          <li>Attempt to gain unauthorized access to our systems.</li>
+          <li>Interfere with the operation or security of the platform.</li>
+          <li>Abuse, threaten, harass, or harm other users or service partners.</li>
+          <li>Use the platform for activities that are unlawful or prohibited.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    title: "10. Intellectual Property",
+    content: (
+      <p>
+        The AviorèGo name, logo, branding, platform design, software, content,
+        graphics, and other materials provided by AviorèGo are protected by
+        applicable intellectual property laws. You may not copy, modify,
+        distribute, or commercially exploit our materials without appropriate
+        permission.
+      </p>
+    ),
+  },
+  {
+    title: "11. Third-Party Services",
+    content: (
+      <p>
+        AviorèGo may integrate with or provide access to third-party services,
+        payment providers, vendors, maps, communications tools, or other
+        platforms. Your use of third-party services may also be subject to
+        their own terms and policies.
+      </p>
+    ),
+  },
+  {
+    title: "12. Service Availability",
+    content: (
+      <p>
+        We work to keep AviorèGo available and reliable, but we do not
+        guarantee that the platform will always be uninterrupted, error-free,
+        or available in every location. Services may occasionally be
+        unavailable due to maintenance, technical issues, network problems, or
+        circumstances outside our control.
+      </p>
+    ),
+  },
+  {
+    title: "13. Limitation of Liability",
+    content: (
+      <p>
+        To the extent permitted by applicable law, AviorèGo will not be liable
+        for indirect, incidental, special, or consequential losses arising
+        from your use of the platform or services. Nothing in these Terms is
+        intended to exclude liability that cannot lawfully be excluded.
+      </p>
+    ),
+  },
+  {
+    title: "14. Changes to These Terms",
+    content: (
+      <p>
+        We may update these Terms and Conditions from time to time to reflect
+        changes to our services, operations, or applicable requirements.
+        Updated terms will be made available through our platform, and your
+        continued use of AviorèGo after an update may constitute acceptance of
+        the revised terms.
+      </p>
+    ),
+  },
+  {
+    title: "15. Contact Us",
+    content: (
+      <>
+        <p>
+          If you have questions about these Terms and Conditions, please
+          contact the AviorèGo team.
+        </p>
+
+        <Link
+          href="/contact"
+          className="mt-5 inline-flex items-center font-bold text-emerald-700 transition hover:text-emerald-900"
+        >
+          Contact AviorèGo
+          <span className="ml-2">→</span>
+        </Link>
+      </>
+    ),
+  },
+];
 
 export default function TermsPage() {
-  const lastUpdated = "July 24, 2026";
-
   return (
-    <div className="bg-neutral-950 text-neutral-300 min-h-screen font-sans">
-      {/* Top Banner Header */}
-      <section className="relative py-16 px-4 sm:px-6 lg:px-8 border-b border-neutral-900 bg-neutral-900/30">
-        <div className="max-w-4xl mx-auto space-y-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-xs text-neutral-400 hover:text-emerald-400 transition-colors mb-2"
-          >
-            <ArrowLeft size={14} />
-            <span>Back to Home</span>
-          </Link>
+    <main className="min-h-screen bg-white text-[#07120f]">
+      {/* HEADER */}
+      <section className="relative overflow-hidden bg-[#00412e] text-white">
+        <div className="absolute -right-32 -top-32 h-80 w-80 rounded-full bg-emerald-400/10 blur-3xl" />
 
-          <div className="inline-flex items-center gap-2 bg-emerald-950/80 border border-emerald-800/60 text-emerald-400 px-3.5 py-1 rounded-full text-xs font-semibold">
-            <Scale size={14} />
-            <span>Operational Governance Agreement</span>
+        <div className="relative mx-auto max-w-5xl px-5 pb-16 pt-7 sm:px-8 lg:px-10 lg:pb-20 lg:pt-10">
+          <div className="flex items-center justify-between">
+            <Link
+              href="/"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 transition hover:bg-white/10"
+              aria-label="Back to home"
+            >
+              <ArrowLeft size={17} />
+            </Link>
+
+            <Link
+              href="/"
+              className="text-xl font-extrabold tracking-[-0.05em]"
+            >
+              Avior<span className="text-emerald-400">è</span>Go
+            </Link>
+
+            <div className="w-10" />
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-            Terms of Service
-          </h1>
-          <p className="text-xs text-neutral-500 font-mono">
-            Effective Date: {lastUpdated} &bull; Aviorè Logistics Technologies Inc.
-          </p>
+          <div className="mt-16 max-w-3xl lg:mt-20">
+            <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-400">
+              Legal
+            </p>
+
+            <h1 className="mt-4 text-4xl font-extrabold leading-[0.98] tracking-[-0.05em] sm:text-6xl">
+              Terms &
+              <span className="block text-emerald-400">
+                Conditions.
+              </span>
+            </h1>
+
+            <p className="mt-6 max-w-2xl text-sm leading-7 text-white/65 sm:text-base">
+              These terms explain the rules and conditions that apply when you
+              use AviorèGo and our services.
+            </p>
+
+            <p className="mt-5 text-[11px] font-medium text-white/40">
+              Last updated: October 2026
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* Main Content Layout */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="bg-neutral-900/50 border border-neutral-800/80 rounded-3xl p-6 sm:p-10 space-y-10">
-
-          {/* Quick Summary Note */}
-          <div className="p-5 rounded-2xl bg-emerald-950/20 border border-emerald-800/40 space-y-2 text-xs leading-relaxed text-emerald-200">
-            <p className="font-bold text-sm text-emerald-400">Agreement Overview</p>
-            <p>
-              By accessing or using Aviorè Go (&quot;Platform&quot;), including booking deliveries, dispatching packages, or registering as a merchant or rider, you agree to be bound by these Terms of Service. Please read them carefully before initiating shipments.
+      {/* CONTENT */}
+      <section className="px-5 py-12 sm:px-8 lg:px-10 lg:py-20">
+        <div className="mx-auto max-w-4xl">
+          {/* Intro notice */}
+          <div className="mb-10 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-5 sm:p-6">
+            <p className="text-sm leading-6 text-[#00412e]">
+              Please read these Terms and Conditions carefully before using
+              AviorèGo. By accessing or using our platform, you acknowledge
+              that you have read and understood these terms.
             </p>
           </div>
 
-          {/* Section 1: User Accounts & Eligibility */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 text-white font-bold text-lg">
-              <FileText className="text-emerald-500" size={20} />
-              <h2>1. Account Registration & Responsibilities</h2>
-            </div>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              To use our automated logistics engine, you must register an account and adhere to the following rules:
-            </p>
-            <ul className="list-disc pl-5 space-y-2 text-xs text-neutral-400 leading-relaxed">
-              <li>
-                <strong className="text-neutral-200">Age & Identity Requirement:</strong> You must be at least 18 years old and provide valid, accurate personal or business details during signup.
-              </li>
-              <li>
-                <strong className="text-neutral-200">Account Security:</strong> You are responsible for safeguarding your login credentials and tracking authentication access. Any activity under your account remains your legal responsibility.
-              </li>
-              <li>
-                <strong className="text-neutral-200">Account Termination:</strong> We reserve the right to suspend or terminate accounts engaging in fraud, harassment of riders, or non-payment of delivery fees.
-              </li>
-            </ul>
-          </section>
+          {/* Sections */}
+          <div className="divide-y divide-neutral-100">
+            {sections.map((section) => (
+              <article
+                key={section.title}
+                className="py-8 first:pt-0 last:pb-0 sm:py-10"
+              >
+                <h2 className="text-lg font-extrabold tracking-[-0.02em] text-[#07120f] sm:text-xl">
+                  {section.title}
+                </h2>
 
-          {/* Section 2: Prohibited Items */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 text-white font-bold text-lg">
-              <AlertTriangle className="text-amber-500" size={20} />
-              <h2>2. Prohibited & Hazardous Packages</h2>
-            </div>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              For public safety and regulatory compliance, customers are strictly prohibited from submitting shipments containing any of the following:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 space-y-1">
-                <p className="text-xs font-bold text-amber-400">Illegal Substances & Contraband</p>
-                <p className="text-[11px] text-neutral-500">Narcotics, illicit drugs, unapproved pharmaceuticals, or contraband under Nigerian Law.</p>
-              </div>
-              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 space-y-1">
-                <p className="text-xs font-bold text-amber-400">Weapons & Explosives</p>
-                <p className="text-[11px] text-neutral-500">Firearms, ammunition, fireworks, flammable liquids, corrosive chemicals, or toxic materials.</p>
-              </div>
-              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 space-y-1">
-                <p className="text-xs font-bold text-amber-400">High-Value Uninsured Cash</p>
-                <p className="text-[11px] text-neutral-500">Physical fiat currency, bullion, bearer bonds, or uncertified precious metals.</p>
-              </div>
-              <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 space-y-1">
-                <p className="text-xs font-bold text-amber-400">Hazardous Waste</p>
-                <p className="text-[11px] text-neutral-500">Biohazardous waste, radioactive materials, or improperly sealed organic hazards.</p>
-              </div>
-            </div>
-            <p className="text-[11px] text-neutral-500 italic pt-1">
-              Attempting to send prohibited items will result in immediate police referral and permanent account termination.
-            </p>
-          </section>
+                <div className="mt-4 text-sm leading-7 text-neutral-600 sm:text-[15px]">
+                  {section.content}
+                </div>
+              </article>
+            ))}
+          </div>
 
-          {/* Section 3: Delivery Fees, Escrow & Payments */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 text-white font-bold text-lg">
-              <CreditCard className="text-emerald-500" size={20} />
-              <h2>3. Pricing, Escrow Protection & Settlements</h2>
-            </div>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              Shipping calculations, merchant ledger splitting, and escrow operations adhere to strict automated rules:
+          {/* Bottom CTA */}
+          <div className="mt-14 rounded-[28px] bg-[#00412e] p-7 text-white sm:p-10">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">
+              Questions?
             </p>
-            <ul className="list-disc pl-5 space-y-2 text-xs text-neutral-400 leading-relaxed">
-              <li>
-                <strong className="text-neutral-200">Dynamic Pricing Engine:</strong> Delivery fees are calculated dynamically based on distance (km), weight range, and optional flags (Express, Fragile, Waterproof).
-              </li>
-              <li>
-                <strong className="text-neutral-200">Escrow Release Protocol:</strong> Funds are safely escrowed upon order creation and are released to the rider/platform upon successful recipient confirmation using the 4-digit verification PIN.
-              </li>
-              <li>
-                <strong className="text-neutral-200">Cancellation Policy:</strong> Orders cancelled before rider dispatch incur no penalty. Cancellations made after a rider arrives at the pickup point are subject to a standard cancellation fee.
-              </li>
-            </ul>
-          </section>
 
-          {/* Section 4: Dispatch & Recipient Verification */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 text-white font-bold text-lg">
-              <Truck className="text-emerald-500" size={20} />
-              <h2>4. Dispatch Operations & Verification PINs</h2>
-            </div>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              To guarantee successful handoffs, senders and recipients must follow standard doorstep rules:
+            <h2 className="mt-3 text-2xl font-extrabold tracking-[-0.03em] sm:text-3xl">
+              Need clarification about our terms?
+            </h2>
+
+            <p className="mt-3 max-w-xl text-sm leading-6 text-white/60">
+              Our team is available to help you understand how AviorèGo works
+              and answer questions about our services.
             </p>
-            <ul className="list-disc pl-5 space-y-2 text-xs text-neutral-400 leading-relaxed">
-              <li>
-                <strong className="text-neutral-200">Verification PIN:</strong> The recipient must provide the unique delivery PIN generated on the sender&apos;s manifest to complete the handoff.
-              </li>
-              <li>
-                <strong className="text-neutral-200">Waiting Time Allowance:</strong> Riders offer a complimentary 10-minute waiting period at pickup and drop-off locations. Idle time exceeding 10 minutes may incur waiting surcharges.
-              </li>
-              <li>
-                <strong className="text-neutral-200">Undeliverable Packages:</strong> If the recipient is unreachable after reasonable attempts, packages are returned to the origin address at the sender&apos;s expense.
-              </li>
-            </ul>
-          </section>
 
-          {/* Section 5: Liability & Claims */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2 text-white font-bold text-lg">
-              <ShieldAlert className="text-emerald-500" size={20} />
-              <h2>5. Limitation of Liability & Damage Claims</h2>
-            </div>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              Aviorè Go provides logistics coordination technology. While we enforce strict rider verification, limits on liability apply:
-            </p>
-            <ul className="list-disc pl-5 space-y-2 text-xs text-neutral-400 leading-relaxed">
-              <li>
-                <strong className="text-neutral-200">Declared Value Limit:</strong> Standard liability for lost or damaged non-fragile packages is capped at the maximum insured package threshold unless declared under special coverage.
-              </li>
-              <li>
-                <strong className="text-neutral-200">Packaging Compliance:</strong> Fragile or delicate items must be properly packed by the sender. Claims for improperly packaged items without appropriate handling tags will be declined.
-              </li>
-              <li>
-                <strong className="text-neutral-200">Force Majeure:</strong> We are not liable for delays or losses caused by acts of God, severe weather, civil unrest, or major road blockades beyond reasonable operational control.
-              </li>
-            </ul>
-          </section>
-
-          {/* Section 6: Contact & Support */}
-          <section className="space-y-3 border-t border-neutral-800/80 pt-6">
-            <div className="flex items-center gap-2 text-white font-bold text-lg">
-              <Mail className="text-emerald-500" size={20} />
-              <h2>6. Contact Legal & Operational Support</h2>
-            </div>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              For questions, dispute resolutions, or legal inquiries regarding these Terms of Service, reach out to our team:
-            </p>
-            <div className="bg-neutral-950 p-4 rounded-xl border border-neutral-800 text-xs text-neutral-300 space-y-1">
-              <p><strong className="text-white">Aviorè Logistics Technologies Inc.</strong></p>
-              <p>Legal & Compliance: <a href="mailto:legal@aviore.com" className="text-emerald-400 hover:underline">legal@aviore.com</a></p>
-              <p>General Support: <a href="mailto:support@aviore.com" className="text-emerald-400 hover:underline">support@aviore.com</a></p>
-              <p className="text-neutral-500 text-[11px] pt-1">Coverage Hubs: Osun State & Oyo State, Nigeria</p>
-            </div>
-          </section>
-
+            <Link
+              href="/contact"
+              className="mt-6 inline-flex h-11 items-center rounded-full bg-white px-6 text-sm font-bold text-[#00412e] transition hover:bg-emerald-50"
+            >
+              Contact Us
+            </Link>
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <Footer />
+    </main>
   );
 }

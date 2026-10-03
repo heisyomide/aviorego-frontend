@@ -9,11 +9,6 @@ import "@fontsource/inter/600.css";
 import "./globals.css";
 import ReactQueryProvider from "../providers/ReactQueryProvider";
 import { AuthProvider } from "../context/AuthContext";
-import SplashGate from "../components/SplashGate";
-import PushNotificationManager from "../components/PushNotificationManager";
-import RealtimeNotificationListener from "../components/RealtimeNotificationListener"; 
-import AppUpdateBanner from "../components/AppUpdateBanner";
-import UniversalBottomNav from "@/src/components/home/UniversalBottomNav";
 import { AppLocationProvider } from "../context/AppLocationContext";
 
 export const viewport: Viewport = {
@@ -202,22 +197,16 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className="min-h-screen bg-[#f8fafc] text-neutral-900 font-sans antialiased selection:bg-emerald-500 selection:text-white pb-24">
+      <body className="min-h-screen bg-[#07120f] text-neutral-900 font-sans antialiased selection:bg-emerald-500 selection:text-white">
        <ReactQueryProvider>
  <AuthProvider>
     <AppLocationProvider>
-      <SplashGate>
-        {/* 🟢 App Update & Notification Managers */}
-        <AppUpdateBanner />
-        <PushNotificationManager />
-        <RealtimeNotificationListener />
+
         
         {/* Main App Workspace */}
         {children}
 
         {/* Universal Role-Based Bottom Navigation Bar */}
-        <UniversalBottomNav />
-      </SplashGate>
     </AppLocationProvider>
  </AuthProvider>
 </ReactQueryProvider>
