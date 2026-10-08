@@ -130,14 +130,14 @@ export default function HeroSection() {
             <div className="hidden items-center gap-8 lg:flex">
 
               <Link
-                href="#services"
+                href="services"
                 className="text-sm font-medium text-white/75 transition hover:text-white"
               >
                 Services
               </Link>
 
               <Link
-                href="#events"
+                href="events"
                 className="text-sm font-medium text-white/75 transition hover:text-white"
               >
                 Events
@@ -151,7 +151,7 @@ export default function HeroSection() {
               </Link>
 
               <Link
-                href="#about"
+                href="about"
                 className="text-sm font-medium text-white/75 transition hover:text-white"
               >
                 About Us
@@ -202,7 +202,7 @@ export default function HeroSection() {
             <div className="flex items-center gap-2 md:hidden">
 
               <Link
-                href="/login"
+                href="https://app.aviorego.com.ng"
                 className="rounded-full px-3 py-2 text-xs font-medium text-white"
               >
                 Log in
